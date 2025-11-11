@@ -1,0 +1,211 @@
+{% extends "app_taller/base.html" %}
+{% block content %}
+<h2>OT #{{ ot.numero_ot }}</h2>
+
+
+<!-- VISTA DEL SUPERVISOR AL ABRIR LA OTS-->
+<div class="card">
+  <div><b>Patente:</b> {{ ot.vehiculo.patente }}</div>
+  <div><b>Marca:</b> {{ ot.vehiculo.marca|default:"—" }}</div>
+  <div><b>Modelo:</b> {{ ot.vehiculo.modelo|default:"—" }}</div>
+  <div><b>Año del modelo:</b> {{ ot.vehiculo.año_modelo|default:"—" }}</div>
+  <div><b>Chofer que registró:</b> {{ ot.usuario_solicitante.nombre_completo|default:"—" }}</div>
+  <div><b>Prioridad:</b> {{ ot.get_prioridad_display }}</div>
+  <div><b>Estado del vehiculo:</b> {{ ot.vehiculo.get_estado_display }}</div>
+  <div><b>Estado OT:</b> {{ ot.estado }}</div>
+  <div><b>Mecánico asignado:</b> {{ ot.mecanico_asignado|default:"—" }}</div>
+  <div><b>Taller:</b> {{ ot.taller.nombre }}</div>
+  <div><b>Descripción:</b> {{ ot.descripcion_problema|default:"—" }}</div>
+  <div><b>Apertura:</b> {{ ot.fecha_apertura }}</div>
+</div>
+
+
+
+
+<hr/>
+
+<h3>Acciones</h3>
+
+<form method="post" action="{% url 'ot_asignar_mecanico' numero_ot=ot.numero_ot %}" style="margin-bottom:1rem;">
+  {% csrf_token %}
+  {{ form_asignar.as_p }}
+  <button class="btn btn-primary">Asignar mecánico</button>
+</form>
+
+{% if soy_supervisor %}
+<section class="card">
+  <h3>Asignación</h3>
+  <form method="post" action="{% url 'ot_asignar_mecanico' ot.numero_ot %}">
+    {% csrf_token %}
+    {{ form_asignar.mecanico }}
+    <button class="btn" type="submit">Asignar mecánico</button>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Cambiar estado</h3>
+  <form method="post" action="{% url 'ot_cambiar_estado' ot.numero_ot %}">
+    {% csrf_token %}
+    {{ form_estado.estado }}
+    {{ form_estado.motivo }} <!-- será requerido si PAUSADA -->
+    <button class="btn" type="submit">Cambiar</button>
+  </form>
+</section>
+{% endif %}
+
+
+<h3>Prioridad</h3>
+<form method="post" action="{% url 'ot_cambiar_prioridad' numero_ot=ot.numero_ot %}">
+  {% csrf_token %}
+  {{ form_prioridad.prioridad }}
+  <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+</form>
+
+<h3>Estado del vehículo</h3>
+<form method="post" action="{% url 'vehiculo_cambiar_estado' numero_ot=ot.numero_ot %}">
+  {% csrf_token %}
+  {{ form_estado_vehiculo.estado }}
+  <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+</form>
+
+
+
+<form method="post" action="{% url 'ot_cambiar_estado' ot.numero_ot %}">
+  {% csrf_token %}
+  <select name="nuevo_estado" class="form-control">
+    {% for code,label in ESTADO_CHOICES %}
+      <option value="{{ code }}" {% if ot.estado == code %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+
+  <textarea name="motivo" rows="2" class="form-control" placeholder="Motivo"></textarea>
+
+  <button type="submit" class="btn btn-primary">Cambiar estado</button>
+</form>
+
+
+<!----------------------------->
+<form method="post"
+      action="{% url 'ot_subir_adjuntos' numero_ot=ot.numero_ot %}"
+      enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ form_adjuntos.etiqueta }}
+  <input type="file" name="archivos" multiple accept=".jpg,.jpeg,.png,.pdf">
+  <button class="btn btn-sm btn-primary" type="submit">Subir</button>
+</form>
+
+<!-- Debug opcional -->
+<!-- DEBUG: adjuntos={{ adjuntos|length }} -->
+
+
+
+
+
+<!----------------------------->
+
+
+<!--------------SECICON MECANICO--------------->
+<h3>Acciones rápidas</h3>
+<div class="d-flex gap-2 flex-wrap">
+  <form method="post" action="{% url 'ot_mecanico_accion' numero_ot=ot.numero_ot accion='iniciar' %}">{% csrf_token %}
+    <button class="btn btn-sm btn-primary" {% if ot.estado != 'PENDIENTE' %}disabled{% endif %}>Iniciar</button>
+  </form>
+
+  <form method="post" action="{% url 'ot_mecanico_accion' numero_ot=ot.numero_ot accion='reanudar' %}">{% csrf_token %}
+    <button class="btn btn-sm btn-success" {% if ot.estado != 'PAUSADA' %}disabled{% endif %}>Reanudar</button>
+  </form>
+
+  <form method="post" action="{% url 'ot_mecanico_accion' numero_ot=ot.numero_ot accion='pausar' %}">{% csrf_token %}
+    <input name="motivo" placeholder="Motivo de pausa" style="width:220px;">
+    <button class="btn btn-sm btn-warning" {% if ot.estado != 'EN_PROCESO' %}disabled{% endif %}>Pausar</button>
+  </form>
+
+  <form method="post" action="{% url 'ot_mecanico_accion' numero_ot=ot.numero_ot accion='finalizar' %}">{% csrf_token %}
+    <button class="btn btn-sm btn-secondary" {% if ot.estado not in 'EN_PROCESO,PAUSADA' %}disabled{% endif %}>Finalizar</button>
+  </form>
+</div>
+
+
+<h3>Entregar repuesto a esta OT</h3>
+<form method="post" action="{% url 'ot_entregar_repuesto' numero_ot=ot.numero_ot %}">
+  {% csrf_token %}
+  {{ form_entrega.sku }} {{ form_entrega.cantidad }}
+  <button class="btn btn-sm btn-outline-primary" type="submit">Entregar</button>
+</form>
+
+<!----------------------------->
+
+
+
+
+
+
+
+
+
+
+
+
+<hr/>
+
+<h3>Historial de estados</h3>
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>De</th>
+      <th>A</th>
+      <th>Realizado por </th>
+      <th>Motivo</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.fecha_cambio|date:"d-m-Y H:i" }}</td>
+      <td>{{ log.estado_anterior|default:"—" }}</td>
+      <td>{{ log.estado_nuevo }}</td>
+      <td>{{ log.cambiado_por.nombre_completo }}</td>
+      <td>{{ log.motivo_cambio|default:"—" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">Sin registros de cambios</td></tr>
+    {% endfor %}
+  </tbody>
+
+
+
+
+
+  <h3>Adjuntos</h3>
+
+{% if adjuntos %}
+  <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px;">
+    {% for a in adjuntos %}
+      <div class="card" style="padding:.5rem;">
+        {% if a.tipo_archivo == "IMG" %}
+          <a href="{{ a.ruta_archivo }}" target="_blank" title="{{ a.nombre_archivo }}">
+            <img src="{{ a.ruta_archivo }}" alt="{{ a.nombre_archivo }}" style="width:100%; height:120px; object-fit:cover; border-radius:6px;">
+          </a>
+        {% elif a.tipo_archivo == "PDF" %}
+          <div style="display:flex; flex-direction:column; gap:.35rem;">
+            <span>📄 {{ a.nombre_archivo }}</span>
+            <a class="btn btn-sm" href="{{ a.ruta_archivo }}" target="_blank">Ver PDF</a>
+          </div>
+        {% else %}
+          <a href="{{ a.ruta_archivo }}" target="_blank">⬇ {{ a.nombre_archivo }}</a>
+        {% endif %}
+        <div style="margin-top:.35rem; font-size:.8rem; color:#555;">
+          Subido: {{ a.fecha_subida|date:"d-m-Y H:i" }}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p>No hay adjuntos aún.</p>
+{% endif %}
+
+</table>
+
+
+{% endblock %}

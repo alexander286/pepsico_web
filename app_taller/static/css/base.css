@@ -1,0 +1,34 @@
+
+
+
+    body{font-family:system-ui, Arial; margin:0; background:#F7F9FC; color:#0F172A}
+    header{display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:#0B5FFF; color:#fff}
+    a{color:inherit; text-decoration:none}
+    .container{max-width:1100px; margin:24px auto; padding:0 16px}
+    .btn{background:#0B5FFF;color:#fff;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}
+    .card{background:#fff; padding:20px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.06)}
+    .msg{margin:8px 0; padding:10px 12px; border-radius:8px}
+    .msg.error{background:#FEE2E2; color:#991B1B}
+    .msg.success{background:#DCFCE7; color:#14532d}
+
+
+
+
+    /* === Chips de prioridad y estado de vehículo === */
+.chip {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Prioridad */
+.chip-prio-baja { background: #e8f5e9; color: #1b5e20; }
+.chip-prio-normal { background: #fff8e1; color: #8d6e00; }
+.chip-prio-alta { background: #ffebee; color: #b71c1c; }
+
+/* Estado vehículo */
+.chip-veh-operativo { background: #e8f5e9; color: #1b5e20; }
+.chip-veh-taller { background: #e3f2fd; color: #0d47a1; }
+.chip-veh-fuera { background: #ede7f6; color: #4a148c; }

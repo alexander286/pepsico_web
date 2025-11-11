@@ -1,0 +1,57 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}Panel{% endblock %} · PepsiCo APT</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <a href="{% url 'home' %}">
+        <img src="{% static 'img/logo_pepsico.png' %}" alt="PepsiCo APT">
+      </a>
+    </div>
+    <nav class="menu">
+      <a href="{% url 'dashboard_admin' %}" class="item">Dashboard</a>
+      <a href="#" class="item">Ingresos</a>
+      <a href="#" class="item">Órdenes de Trabajo</a>
+      <a href="#" class="item">Repuestos</a>
+      <a href="#" class="item">Inventario/Consumos</a>
+      <a href="#" class="item">Reportes</a>
+      <a href="#" class="item">Auditoría</a>
+      <a href="#" class="item">Usuarios</a>
+      <a href="#" class="item">Roles</a>
+      <a href="#" class="item">Accesos patio</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="left">
+        <button id="btnToggle" type="button">☰</button>
+        <span class="crumb">{% block breadcrumb %}{% endblock %}</span>
+      </div>
+      <div class="right">
+        <a href="#" title="Notificaciones">🔔</a>
+        {% if request.user.is_authenticated %}
+          <span class="user">{{ request.user.username }}</span>
+          <a class="btn" href="{% url 'logout' %}">Salir</a>
+        {% endif %}
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="{% static 'js/app.js' %}"></script>
+</body>
+</html>

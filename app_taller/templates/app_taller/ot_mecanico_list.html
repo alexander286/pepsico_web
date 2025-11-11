@@ -1,0 +1,27 @@
+{% extends "app_taller/base.html" %}
+{% block content %}
+<h2>Mis Órdenes</h2>
+<div class="card" style="overflow:auto;">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>N° OT</th><th>Patente</th><th>Estado</th><th>Prioridad</th><th>Taller</th><th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for ot in ots %}
+      <tr>
+        <td>{{ ot.numero_ot }}</td>
+        <td>{{ ot.vehiculo.patente }}</td>
+        <td>{{ ot.get_estado_display }}</td>
+        <td>{{ ot.get_prioridad_display }}</td>
+        <td>{{ ot.taller.nombre }}</td>
+        <td><a class="btn btn-sm btn-primary" href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">Abrir</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6">No tienes OTs asignadas.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

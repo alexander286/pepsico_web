@@ -1,0 +1,63 @@
+{% extends "app_taller/base.html" %}
+{% block title %}Nuevo ingreso{% endblock %}
+{% block content %}
+
+<h1>Nuevo ingreso de vehículo</h1>
+
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  <div class="mb-3">
+  <form method="post" enctype="multipart/form-data">
+  
+    {{ form.patente.label_tag }}
+    {{ form.patente }}
+    {{ form.patente.errors }}
+    <small class="text-muted">Formato CL: ABCD12, AB1234, AB12CD.</small>
+  </div>
+
+  <div class="mb-3">
+    {{ form.conductor_actual.label_tag }}
+    {{ form.conductor_actual }}
+    {{ form.conductor_actual.errors }}
+    <small class="text-muted">Opcional.</small>
+  </div>
+
+  <div class="mb-3">
+    {{ form.fecha_hora_ingreso.label_tag }}
+    {{ form.fecha_hora_ingreso }}
+    {{ form.fecha_hora_ingreso.errors }}
+  </div>
+
+  <div class="mb-3">
+    {{ form.taller.label_tag }}
+    {{ form.taller }}
+    {{ form.taller.errors }}
+  </div>
+
+  <div class="mb-3">
+    {{ form.observaciones.label_tag }}
+    {{ form.observaciones }}
+    {{ form.observaciones.errors }}
+  </div>
+
+  
+   <div class="grid">
+    <label>Marca</label>
+    {{ form.marca }}
+    <label>Modelo</label>
+    {{ form.modelo }}
+    <label>Año modelo</label>
+    {{ form.anio_modelo }}
+  </div>
+
+  <div style="margin-top:.5rem;">
+    <label>Adjuntos (JPG/PNG/PDF, máx. 8MB)</label>
+    {{ form.adjuntos }}
+  </div>
+
+  <button type="submit" class="btn btn-primary">Guardar</button>
+  <a href="{% url 'dashboard' %}" class="btn btn-link">Cancelar</a>
+</form>
+
+{% endblock %}

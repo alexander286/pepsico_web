@@ -1,0 +1,14 @@
+{% extends "app_taller/base.html" %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/base.css' %}">
+<script src="{% static 'js/main.js' %}" defer></script>
+
+
+{% block title %}Dashboard Admin{% endblock %}
+{% block content %}
+<h2>Bienvenido,
+    {{ usuario_app.nombre_completo|default:request.user.get_full_name|default:request.user.username }} 👋
+  </h2>
+  <h2>Dashboard · Admin</h2>
+  <p>Acceso total a módulos y reportes.</p>
+{% endblock %}

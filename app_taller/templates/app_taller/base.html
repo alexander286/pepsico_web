@@ -1,0 +1,86 @@
+
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/base.css' %}">
+<script src="{% static 'js/main.js' %}" defer></script>
+<link href="{% static 'css/base.css' %}" rel="stylesheet"> 
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+
+
+
+<!doctype html>
+
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}PepsiCo APT{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+</head>
+
+<body>
+
+  
+  
+  <div class="topbar">
+    <div class="brand">
+      <img src="{% static 'img/logo.png' %}" alt="PepsiCo APT">
+    
+    </div>
+
+    
+    <div>
+
+<header>
+ 
+  <nav>
+    {% if user.is_authenticated %}
+      <a href="{% url 'dashboard' %}">Dashboard</a> ·
+      <a href="{% url 'logout' %}">Salir</a>
+    {% else %}
+    
+      <a href="{% url 'login' %}">Iniciar sesión</a>
+    {% endif %}
+  </nav>
+
+
+</header>
+
+
+
+<div class="container">
+  {% if messages %}
+    {% for m in messages %}
+      <div class="msg {% if m.tags %}{{ m.tags }}{% endif %}">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
+  {% block content %}{% endblock %}
+
+
+
+
+{% if messages %}
+  <div class="messages">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if messages %}
+  <div class="messages">
+    {% for m in messages %}
+      <div class="toast {{ m.tags }}">{{ m }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+
+
+</div>
+
+
+</body>
+</html>

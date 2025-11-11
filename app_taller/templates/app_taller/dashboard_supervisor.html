@@ -1,0 +1,25 @@
+{% extends "app_taller/base.html" %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/base.css' %}">
+<script src="{% static 'js/main.js' %}" defer></script>
+
+
+
+{% block title %}Dashboard Supervisor{% endblock %}
+
+
+{% block content %}
+<h2>Bienvenido,
+    {{ usuario_app.nombre_completo|default:request.user.get_full_name|default:request.user.username }} 👋
+  </h2>
+  <h2>Dashboard · Supervisor</h2>
+  <p>Acceso total a módulos y reportes.</p>
+
+
+  <!-- dashboard_supervisor.html -->
+  <a class="btn btn-primary" href="{% url 'ot_list' %}?estado=EN_PROCESO">Ver OTs en proceso</a>
+  <a class="btn" href="{% url 'ot_list' %}?estado=PENDIENTE">Ver OTs pendientes</a>
+  <a class="btn" href="{% url 'ot_list' %}">Ver todas</a>
+
+
+{% endblock %}

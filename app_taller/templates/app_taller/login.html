@@ -1,0 +1,22 @@
+
+
+{% extends "app_taller/base.html" %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/base.css' %}">
+<script src="{% static 'js/main.js' %}" defer></script>
+
+
+{% block title %}Ingresar{% endblock %}
+{% block content %}
+  <div class="card" style="max-width:440px">
+    <h3>Iniciar sesión</h3>
+    <form method="post">
+      {% csrf_token %}
+      <label>Usuario o correo</label><br>
+      {{ form.username_or_email }}<br><br>
+      <label>Contraseña</label><br>
+      {{ form.password }}<br><br>
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </div>
+{% endblock %}
