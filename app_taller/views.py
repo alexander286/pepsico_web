@@ -1076,7 +1076,7 @@ def ot_mecanico_accion(request, numero_ot, accion):
     user = get_usuario_app_from_request(request)
     # Solo el mecánico asignado (o supervisores/admin) pueden operar:
     role = get_user_role_dominio(request)
-    if not (ot.mecanico_asignado_id == (user.id if user else None) or role in ("ADMIN","SUPERVISOR","JEFE")):
+    if not (user and (ot.mecanico_asignado_id == user.id or role in ("ADMIN", "SUPERVISOR", "JEFE_TALLER"))):
         return HttpResponseForbidden("No tienes permiso para esta OT.")
 
     nuevo = None
@@ -1093,8 +1093,12 @@ def ot_mecanico_accion(request, numero_ot, accion):
             messages.error(request, "Debes indicar un motivo de pausa.")
             return redirect("ot_detalle", numero_ot=numero_ot)
     elif accion == "finalizar":
+        if ot.estado == EstadoOT.PAUSADA:
+            messages.error(request, "Reanuda la OT antes de finalizar.")
+            return redirect("ot_detalle", numero_ot=numero_ot)
         nuevo = EstadoOT.FINALIZADA
         ot.fecha_finalizacion = timezone.now()
+
     else:
         messages.error(request, "Acción inválida.")
         return redirect("ot_detalle", numero_ot=numero_ot)
@@ -1128,8 +1132,8 @@ def ot_entregar_repuesto(request, numero_ot):
     ot = get_object_or_404(OrdenTrabajo, numero_ot=numero_ot)
     user = get_usuario_app_from_request(request)
     role = get_user_role_dominio(request)
-    if not (ot.mecanico_asignado_id == (user.id if user else None) or role in ("ADMIN","SUPERVISOR","JEFE")):
-        return HttpResponseForbidden("No tienes permiso.")
+    if not (user and (ot.mecanico_asignado_id == user.id or role in ("ADMIN", "SUPERVISOR", "JEFE_TALLER"))):
+        return HttpResponseForbidden("No tienes permiso para esta OT.")
 
     if request.method != "POST":
         return redirect("ot_detalle", numero_ot=numero_ot)

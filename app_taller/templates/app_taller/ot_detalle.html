@@ -26,32 +26,28 @@
 
 <h3>Acciones</h3>
 
-<form method="post" action="{% url 'ot_asignar_mecanico' numero_ot=ot.numero_ot %}" style="margin-bottom:1rem;">
-  {% csrf_token %}
-  {{ form_asignar.as_p }}
-  <button class="btn btn-primary">Asignar mecánico</button>
-</form>
-
+{# Solo supervisor / admin / jefe de taller #}
 {% if soy_supervisor %}
 <section class="card">
-  <h3>Asignación</h3>
-  <form method="post" action="{% url 'ot_asignar_mecanico' ot.numero_ot %}">
+  <h3>Asignar mecánico</h3>
+  <form method="post" action="{% url 'ot_asignar_mecanico' numero_ot=ot.numero_ot %}">
     {% csrf_token %}
     {{ form_asignar.mecanico }}
-    <button class="btn" type="submit">Asignar mecánico</button>
+    <button class="btn btn-primary btn-sm" type="submit">Asignar mecánico</button>
   </form>
 </section>
 
 <section class="card">
   <h3>Cambiar estado</h3>
-  <form method="post" action="{% url 'ot_cambiar_estado' ot.numero_ot %}">
+  <form method="post" action="{% url 'ot_cambiar_estado' numero_ot=ot.numero_ot %}">
     {% csrf_token %}
-    {{ form_estado.estado }}
-    {{ form_estado.motivo }} <!-- será requerido si PAUSADA -->
-    <button class="btn" type="submit">Cambiar</button>
+    {{ form_estado.nuevo_estado }}   {# <- este es el campo correcto #}
+    {{ form_estado.motivo }}
+    <button class="btn btn-sm" type="submit">Cambiar</button>
   </form>
 </section>
 {% endif %}
+
 
 
 <h3>Prioridad</h3>
