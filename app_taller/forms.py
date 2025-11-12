@@ -247,3 +247,20 @@ class AdjuntoOTForm(forms.Form):
 class EntregaRepuestoForm(forms.Form):
     sku = forms.CharField(label="SKU", max_length=50)
     cantidad = forms.IntegerField(label="Cantidad", min_value=1)
+
+
+
+from .models import Repuesto 
+
+class SolicitarRepuestoForm(forms.Form):
+    repuesto = forms.ModelChoiceField(
+        queryset=Repuesto.objects.filter(activo=True).order_by("nombre"),
+        label="Repuesto"
+    )
+    cantidad = forms.IntegerField(min_value=1, label="Cantidad", initial=1)
+    urgente = forms.BooleanField(required=False, label="Urgente")
+    fecha_entrega_estimada = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    nombre_proveedor = forms.CharField(required=False, max_length=200, label="Proveedor (opcional)")
+
+
+

@@ -1,49 +1,43 @@
 # app_taller/services/inventario_client.py
+import json
 from dataclasses import dataclass
-from typing import List, Dict, Any
-import time, hashlib, hmac, json
+from typing import Dict, Any, Optional, List
 from django.conf import settings
+
+try:
+    import requests
+except Exception:
+    requests = None  # por si no está instalado
 
 @dataclass
 class Item:
-    sku: str
-    cantidad: int
+    code: str
+    name: str
+    qty: float
 
 class InventarioClient:
     def __init__(self):
-        self.base = settings.INV_API_BASE
-        self.token = settings.INV_API_TOKEN
-        self.mode = settings.INV_API_MODE.upper()
-        self.timeout = settings.INV_API_TIMEOUT
-        self.retries = settings.INV_API_RETRIES
+        self.enabled = bool(getattr(settings, "INV_API_ENABLED", False))
+        self.base = getattr(settings, "INV_API_BASE", "").rstrip("/")
+        self.timeout = int(getattr(settings, "INV_API_TIMEOUT", 2))
+        self.retries = int(getattr(settings, "INV_API_RETRIES", 0))
+        # no prepares session si está deshabilitado o no hay requests
+        self.session = requests.Session() if (self.enabled and requests) else None
 
-    def _idempotency(self, ot: str, items: List[Item]) -> str:
-        base = f"{ot}|{json.dumps([i.__dict__ for i in items], sort_keys=True)}"
-        return hashlib.sha256(base.encode()).hexdigest()
+    def _should_call(self) -> bool:
+        return bool(self.enabled and self.session and self.base)
 
-    # --- MOCK responses ---
-    def _mock_ok(self, **kw) -> Dict[str, Any]:
-        return {"ok": True, "mov_id": "MOCK-MOV-{}".format(int(time.time())), "extra": kw}
+    # Ejemplo: confirmar entrega de un ítem
+    def confirmar_entrega(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        payload: {"ot": "...", "item_code": "...", "item_name": "...", "quantity": 1, ...}
+        """
+        if not self._should_call():
+            # Modo “stub”: simula OK inmediato para no trabar el flujo
+            return {"status": "stubbed", "ok": True}
 
-    def check_stock(self, sku: str) -> Dict[str, Any]:
-        if self.mode == "OFF":  # “caída”
-            return {"ok": False, "error": "API inventario OFF"}
-        if self.mode == "MOCK":
-            return {"ok": True, "sku": sku, "stock": 999}
-        # REAL → requests.get(...) (omito por brevedad)
-        return {"ok": True, "sku": sku, "stock": 10}
-
-    def reservar(self, ot: str, taller: str, items: List[Item], usuario: str) -> Dict[str, Any]:
-        if self.mode != "REAL":
-            return self._mock_ok(action="reservar", ot=ot, taller=taller, items=[i.__dict__ for i in items])
-        # REAL: requests.post(...)
-
-    def entregar(self, ot: str, taller: str, items: List[Item], usuario: str) -> Dict[str, Any]:
-        if self.mode != "REAL":
-            return self._mock_ok(action="entregar", ot=ot, taller=taller, items=[i.__dict__ for i in items])
-        # REAL: requests.post(...)
-
-    def anular(self, mov_id: str, motivo: str, usuario: str) -> Dict[str, Any]:
-        if self.mode != "REAL":
-            return self._mock_ok(action="anular", mov_id=mov_id, motivo=motivo)
-        # REAL: requests.post(...)
+        url = f"{self.base}/entregas/confirmar"
+        # un único intento aquí; los reintentos los maneja el sync offline
+        r = self.session.post(url, json=payload, timeout=self.timeout)
+        r.raise_for_status()
+        return r.json()

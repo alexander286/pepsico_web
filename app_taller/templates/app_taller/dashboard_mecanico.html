@@ -1,46 +1,40 @@
+
+
 {% extends "app_taller/base.html" %}
-{% load static %}
-
-{% block title %}Dashboard Mecánico{% endblock %}
-
 {% block content %}
+
 <h2>Bienvenido,
   {{ usuario_app.nombre_completo|default:request.user.get_full_name|default:request.user.username }}
 </h2>
 
-<div class="d-flex justify-content-between align-items-center mb-2">
-  <h3 class="h5 mb-0">Mis Órdenes (top 10)</h3>
-  <a class="btn btn-sm btn-primary" href="{% url 'ot_mecanico_list' %}">Ver todas mis OTs</a>
+<h1>Mi trabajo</h1>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;margin-bottom:1rem;">
+  <div class="card"><div class="card-body"><b>OTs abiertas</b><div style="font-size:28px">{{ kpi.abiertas }}</div></div></div>
+  <div class="card"><div class="card-body"><b>Pausadas</b><div style="font-size:28px">{{ kpi.pausadas }}</div></div></div>
+  <div class="card"><div class="card-body"><b>Ingresadas hoy</b><div style="font-size:28px">{{ kpi.hoy }}</div></div></div>
+  <div class="card"><div class="card-body"><b>Finalizadas hoy</b><div style="font-size:28px">{{ kpi.finalizadas_hoy }}</div></div></div>
 </div>
 
 <div class="card" style="overflow:auto;">
   <table class="table">
     <thead>
       <tr>
-        <th>N° OT</th>
-        <th>Patente</th>
-        <th>Estado</th>
-        <th>Prioridad</th>
-        <th>Taller</th>
-        <th>F. Apertura</th>
-        <th></th>
+        <th>N° OT</th><th>Patente</th><th>Estado</th><th>Prioridad</th><th>Taller</th><th>Acción</th>
       </tr>
     </thead>
     <tbody>
-      {% for ot in mis_ots %}
+      {% for ot in ots_asignadas %}
       <tr>
         <td>{{ ot.numero_ot }}</td>
         <td>{{ ot.vehiculo.patente }}</td>
         <td>{{ ot.get_estado_display }}</td>
         <td>{{ ot.get_prioridad_display }}</td>
         <td>{{ ot.taller.nombre }}</td>
-        <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
-        <td>
-          <a class="btn btn-sm btn-outline-primary" href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">Abrir</a>
-        </td>
+        <td><a class="btn btn-sm btn-primary" href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">Abrir</a></td>
       </tr>
       {% empty %}
-      <tr><td colspan="7">No tienes OTs asignadas por ahora.</td></tr>
+      <tr><td colspan="6">No tienes OTs abiertas asignadas.</td></tr>
       {% endfor %}
     </tbody>
   </table>

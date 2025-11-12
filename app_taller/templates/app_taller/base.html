@@ -43,6 +43,16 @@
     
       <a href="{% url 'login' %}">Iniciar sesión</a>
     {% endif %}
+
+
+
+
+    {% if not settings.INV_API_ENABLED %}
+  <div class="alert alert-warning" style="margin:8px 0">
+    Modo inventario: <strong>LOCAL</strong> (API deshabilitada). Los movimientos quedan “Pendiente de sincronizar”.
+  </div>
+{% endif %}
+
   </nav>
 
 

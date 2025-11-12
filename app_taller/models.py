@@ -496,3 +496,6 @@ class LogAuditoria(models.Model):
             models.Index(fields=["fecha_creacion"]),
             models.Index(fields=["accion"]),
         ]
+
+
+

@@ -122,12 +122,221 @@
 </div>
 
 
-<h3>Entregar repuesto a esta OT</h3>
-<form method="post" action="{% url 'ot_entregar_repuesto' numero_ot=ot.numero_ot %}">
+
+
+
+
+
+<h3>Solicitar repuesto</h3>
+
+{% if puede_solicitar_repuesto %}
+  <form method="post" action="{% url 'ot_solicitar_repuesto' numero_ot=ot.numero_ot %}">
   {% csrf_token %}
-  {{ form_entrega.sku }} {{ form_entrega.cantidad }}
-  <button class="btn btn-sm btn-outline-primary" type="submit">Entregar</button>
+  {{ form_solicitud_repuesto.repuesto }}
+  {{ form_solicitud_repuesto.cantidad }}
+  {{ form_solicitud_repuesto.nombre_proveedor }}
+  {{ form_solicitud_repuesto.observaciones }}
+  <button class="btn btn-primary btn-sm" type="submit">Solicitar</button>
 </form>
+{% endif %}
+
+
+{# === FORMULARIO PARA SOLICITAR REPUESTOS (mecánico asignado o supervisor) === #}
+{% if puede_solicitar_repuesto %}
+<section class="card">
+  <h3>Solicitar repuesto</h3>
+  <form method="post" action="{% url 'ot_solicitar_repuesto' numero_ot=ot.numero_ot %}">
+    {% csrf_token %}
+    {{ form_solic_repuesto.repuesto }}
+    {{ form_solic_repuesto.cantidad }}
+    {{ form_solic_repuesto.observacion }}
+    <button class="btn btn-primary btn-sm" type="submit">Solicitar</button>
+  </form>
+</section>
+{% endif %}
+
+{# === LISTA DE SOLICITUDES LOCALES (BD) visible para todos los que ven la OT) === #}
+<section class="card">
+  <h3>Solicitudes (local)</h3>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th><th>Repuesto</th><th>Cant.</th><th>Estado</th><th>Creada por</th><th>Fecha</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in solicitudes_locales %}
+      <tr>
+        <td>{{ s.id }}</td>
+        <td>{{ s.repuesto.nombre }}</td>
+        <td>{{ s.cantidad }}</td>
+        <td>{{ s.estado }}</td>
+        <td>{{ s.creado_por.nombre_completo }}</td>
+        <td>{{ s.fecha_creacion|date:"d-m-Y H:i" }}</td>
+        <td>
+          {% if soy_supervisor and s.id and s.estado != "RECIBIDA" %}
+            <a class="btn btn-sm"
+               href="{% url 'ot_confirmar_entrega' numero_ot=ot.numero_ot solicitud_id=s.id %}">
+              Confirmar entrega
+            </a>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7">Sin solicitudes.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+
+
+
+
+
+
+
+
+
+
+{% if soy_mecanico_asignado or soy_supervisor %}
+<h3>Observaciones del mecánico</h3>
+<textarea id="obs-mec" rows="5" class="form-control"
+          placeholder="Escribe tus observaciones técnicas...">{{ obs_mecanico_inicial }}</textarea>
+<p id="obs-status" style="font-size:12px;color:#666;margin-top:4px;">—</p>
+
+<script>
+(function(){
+  function getCookie(name){
+    const v = document.cookie.split(';').map(s=>s.trim());
+    for(const p of v){ if (p.startsWith(name + '=')) return decodeURIComponent(p.split('=')[1]); }
+    return '';
+  }
+  const ta = document.getElementById('obs-mec');
+  const status = document.getElementById('obs-status');
+  if(!ta) return;
+  let timer = null;
+
+  function saveNow(){
+    const form = new FormData();
+    form.append('texto', ta.value);
+    fetch("{% url 'ot_guardar_observaciones' numero_ot=ot.numero_ot %}", {
+      method: 'POST',
+      headers: {'X-CSRFToken': getCookie('csrftoken')},
+      body: form
+    }).then(r=>r.json()).then(j=>{
+      status.textContent = j.ok ? 'Guardado ✓' : 'Error al guardar';
+    }).catch(()=>{ status.textContent = 'Error de red'; });
+  }
+
+  function schedule(){
+    status.textContent = 'Guardando...';
+    clearTimeout(timer);
+    timer = setTimeout(saveNow, 1000); // 1s tras dejar de tipear
+  }
+
+  ta.addEventListener('input', schedule);
+  window.addEventListener('beforeunload', function(){
+    if(timer){ clearTimeout(timer); saveNow(); }
+  });
+})();
+</script>
+{% endif %}
+
+
+
+
+
+<h3>Tiempo en estado: <span id="timer-estado">–:–:–</span></h3>
+<script>
+(function(){
+  const start = new Date("{{ inicio_estado_iso }}");
+  const el = document.getElementById('timer-estado');
+  if(!el || isNaN(start)) return;
+  function two(n){ return (n<10?'0':'')+n; }
+  function tick(){
+    const diff = Date.now() - start.getTime();
+    if (diff < 0){ el.textContent = "00:00:00"; return; }
+    const s = Math.floor(diff/1000);
+    const h = Math.floor(s/3600);
+    const m = Math.floor((s%3600)/60);
+    const ss = s%60;
+    el.textContent = two(h)+":"+two(m)+":"+two(ss);
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+
+
+{% if soy_mecanico_asignado or soy_supervisor %}
+<h3>Checklist</h3>
+<div class="card" style="padding:0.5rem;">
+  <table class="table">
+    <thead><tr><th>OK</th><th>Ítem</th><th>Obs / Resultado</th><th>Guardar</th></tr></thead>
+    <tbody>
+      {% for it in checklist %}
+      <tr>
+        <td>
+          <input type="checkbox" data-code="{{ it.code }}" class="chk-ok" {% if it.estado and it.estado|slice:":2" == "OK" %}checked{% endif %}>
+        </td>
+        <td>{{ it.texto }}</td>
+        <td>
+          <input type="text" class="chk-obs" data-code="{{ it.code }}"
+                 value="{% if it.estado and it.estado|slice:":2" != "OK" %}{{ it.estado|cut:'NO: ' }}{% endif %}">
+        </td>
+        <td>
+          <button type="button" class="btn btn-sm btn-primary btn-chk-guardar" data-code="{{ it.code }}">Guardar</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+(function(){
+  function getCookie(name){
+    const v = document.cookie.split(';').map(s=>s.trim());
+    for(const p of v){ if (p.startsWith(name + '=')) return decodeURIComponent(p.split('=')[1]); }
+    return '';
+  }
+  function post(code, ok, obs){
+    const fd = new FormData();
+    fd.append('code', code);
+    fd.append('ok', ok ? '1' : '0');
+    fd.append('obs', obs || '');
+    return fetch("{% url 'ot_checklist_toggle' numero_ot=ot.numero_ot %}", {
+      method: 'POST', headers: {'X-CSRFToken': getCookie('csrftoken')}, body: fd
+    }).then(r=>r.json());
+  }
+  document.querySelectorAll('.btn-chk-guardar').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const code = btn.dataset.code;
+      const ok = document.querySelector('.chk-ok[data-code="'+code+'"]').checked;
+      const obs = document.querySelector('.chk-obs[data-code="'+code+'"]').value;
+      post(code, ok, obs).then(j=>{ if(!j.ok) alert('Error guardando'); });
+    });
+  });
+})();
+</script>
+{% endif %}
+
+
+
+
+
+<th>Acción</th>
+...
+<td>
+  {% if soy_supervisor and s.id and s.estado != "RECIBIDA" %}
+    <a class="btn btn-sm" href="{% url 'ot_confirmar_entrega' numero_ot=ot.numero_ot solicitud_id=s.id %}">Confirmar entrega</a>
+  {% else %}—{% endif %}
+</td>
+
+
+
 
 <!----------------------------->
 

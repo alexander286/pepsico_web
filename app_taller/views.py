@@ -1,8 +1,10 @@
 from django.shortcuts import render
 
 # Create your views here.
+from .utils import get_usuario_app_from_request, get_user_role_dominio
 
 from django.utils import timezone
+from django.conf import settings
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -610,7 +612,13 @@ class OTDetalleView(LoginRequiredMixin, DetailView):
 
 
 
-
+#############################
+#############################
+##############################
+###############################
+###############################
+##############################
+#############################
 
 from .models import OrdenTrabajo, LogEstadoOT, Usuario, EstadoOT
 
@@ -655,15 +663,26 @@ class OTDetalleView(DetailView):
 
         ctx["form_prioridad"] = CambiarPrioridadForm(initial={"prioridad": self.object.prioridad})
         ctx["form_estado_vehiculo"] = CambiarEstadoVehiculoForm(initial={"estado": self.object.vehiculo.estado})
-
+    
       
         ctx["form_entrega"] = EntregaRepuestoForm()
 
         #solo acciones por rol
-        ctx["soy_supervisor"] = get_user_role_dominio(self.request) in ("ADMIN", "SUPERVISOR", "JEFE_TALLER")
+        role = (get_user_role_dominio(self.request) or "").upper().strip()
+        ROLES_SUPERVISORES = {"ADMIN", "SUPERVISOR", "JEFE", "JEFE_TALLER"}
+
+        ctx["soy_supervisor"] = (
+            role in ROLES_SUPERVISORES
+            or getattr(self.request.user, "is_staff", False)
+            or getattr(self.request.user, "is_superuser", False)
+        )
 
         u = get_usuario_app_from_request(self.request)
         ctx["soy_mecanico_asignado"] = bool(u and self.object.mecanico_asignado_id == u.id)
+
+        ctx["puede_solicitar_repuesto"] = bool(
+            ctx["soy_mecanico_asignado"] or ctx["soy_supervisor"]
+        )
 
         ctx["logs"] = LogEstadoOT.objects.filter(orden_trabajo=self.object).order_by("-fecha_cambio")
         ctx["tareas"] = TareaOT.objects.filter(orden_trabajo=self.object).select_related("mecanico_asignado").order_by("-fecha_creacion")
@@ -676,7 +695,45 @@ class OTDetalleView(DetailView):
         ctx["adjuntos"] = (ArchivoAdjunto.objects
                     .filter(tipo_entidad="OT", entidad_id=ot.id)
                     .order_by("-fecha_subida"))
+        
+        ctx["form_solic_repuesto"] = SolicitarRepuestoForm()
+        ctx["solicitudes_locales"] = (
+            SolicitudRepuesto.objects
+            .filter(orden_trabajo=ot)
+            .select_related("repuesto", "creado_por")
+            .order_by("-fecha_creacion")
+        )
+        
+        # Observaciones iniciales
+        obs = ctx["tareas"].filter(titulo="OBS_MECANICO").first()
+        ctx["obs_mecanico_inicial"] = (obs.descripcion if obs else "")
 
+
+
+         # ⏱ Tiempo en estado actual (cronómetro)
+        last_log = (LogEstadoOT.objects
+                .filter(orden_trabajo=ot)
+                .order_by("-fecha_cambio")
+                .first())
+        inicio_estado_ts = last_log.fecha_cambio if last_log else ot.fecha_apertura
+        ctx["inicio_estado_iso"] = inicio_estado_ts.isoformat()
+
+
+
+
+            # Determinar tipo (temporal: usa defecto)
+        tipo = DEFAULT_CHECKLIST
+        items = CHECKLIST_CATALOGO.get(tipo, [])
+        # Estado actual de cada item:
+        marcadas = {t.titulo[4:]: t.descripcion for t in TareaOT.objects.filter(orden_trabajo=ot, titulo__startswith="CHK:")}
+        # empaquetar
+        ctx["checklist"] = [{"code": c, "texto": txt, "estado": marcadas.get(c)} for (c, txt) in items]
+
+        try:
+            inv = InventarioClient()
+            ctx["solicitudes_api"] = inv.listar_solicitudes_ot(ot.numero_ot)  # devuelve list[dict]
+        except Exception:
+            ctx["solicitudes_api"] = []
 
         return ctx
 
@@ -1068,7 +1125,8 @@ from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
 from .models import LogEstadoOT, EstadoOT, MovimientoRepuesto, TipoMovimiento
-from .services.inventario_client import InventarioClient, Item
+from .services.inventario_client import InventarioClient
+
 
 @login_required
 def ot_mecanico_accion(request, numero_ot, accion):
@@ -1194,24 +1252,481 @@ from .models import OrdenTrabajo, EstadoOT
 from .views import get_usuario_app_from_request  # si está en este mismo archivo, no hace falta
 # (ya lo tienes, lo uso igual aquí)
 
+# en la parte de dashboards
 class MecanicoDashboard(TemplateView):
     template_name = 'app_taller/dashboard_mecanico.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        usuario = get_usuario_app_from_request(self.request)
-        ctx["usuario_app"] = usuario
+        u = get_usuario_app_from_request(self.request)
+        if not u:
+            ctx["ots_asignadas"] = []
+            ctx["kpi"] = {"abiertas": 0, "pausadas": 0, "hoy": 0, "finalizadas_hoy": 0}
+            return ctx
 
-        # Top 10 OTs del mecánico (todas menos CERRADA)
-        if usuario:
-            ctx["mis_ots"] = (
-                OrdenTrabajo.objects
-                .select_related("vehiculo", "taller")
-                .filter(mecanico_asignado=usuario)
-                .exclude(estado=EstadoOT.CERRADA)
-                .order_by("-fecha_apertura")[:10]
-            )
-        else:
-            ctx["mis_ots"] = []
+        qs = (OrdenTrabajo.objects
+              .select_related("vehiculo","taller")
+              .filter(mecanico_asignado_id=u.id)
+              .order_by("-fecha_apertura"))
 
+        # abiertas = no cerradas
+        abiertas = qs.exclude(estado=EstadoOT.CERRADA)
+        pausadas = qs.filter(estado=EstadoOT.PAUSADA)
+
+        # “hoy”
+        from django.utils import timezone
+        now = timezone.localtime()
+        inicio_hoy = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        fin_hoy = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+        hoy = qs.filter(fecha_apertura__range=(inicio_hoy, fin_hoy))
+
+        finalizadas_hoy = qs.filter(
+            fecha_finalizacion__isnull=False,
+            fecha_finalizacion__range=(inicio_hoy, fin_hoy)
+        )
+
+        ctx["ots_asignadas"] = abiertas[:20]  # top 20
+        ctx["kpi"] = {
+            "abiertas": abiertas.count(),
+            "pausadas": pausadas.count(),
+            "hoy": hoy.count(),
+            "finalizadas_hoy": finalizadas_hoy.count(),
+        }
         return ctx
+
+
+
+
+
+
+
+
+
+from .forms import SolicitarRepuestoForm
+from .forms import SolicitarRepuestoForm
+from .models import SolicitudRepuesto, EstadoSolicitud
+# views.py
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from django.db import transaction
+from .models import OrdenTrabajo, SolicitudRepuesto, Usuario, Repuesto
+from .forms import SolicitarRepuestoForm
+
+try:
+    from .services.inventario_client import InventarioClient
+except Exception:
+    InventarioClient = None
+
+
+from django.views.decorators.http import require_POST
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+
+
+from django.contrib.auth.decorators import login_required
+from django.db import transaction, IntegrityError
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+@login_required
+@require_POST
+@login_required
+@require_POST
+@login_required
+
+def ot_solicitar_repuesto(request, numero_ot):
+    # 1) Solo aceptamos POST
+    if request.method != "POST":
+        messages.error(request, "Acción no permitida (usa POST).")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    ot = get_object_or_404(OrdenTrabajo, numero_ot=numero_ot)
+
+    # 2) Usuario de dominio (obligatorio)
+    u = get_usuario_app_from_request(request)
+    if not u:
+        messages.error(request, "No se pudo identificar al usuario de la aplicación.")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    # 3) Permisos: supervisor o mecánico asignado
+    role = (get_user_role_dominio(request) or "").upper().strip()
+    es_supervisor = role in {"ADMIN", "SUPERVISOR", "JEFE", "JEFE_TALLER"} or request.user.is_staff or request.user.is_superuser
+    es_mec_asignado = (ot.mecanico_asignado_id == u.id)
+    if not (es_supervisor or es_mec_asignado):
+        messages.error(request, "No tienes permisos para solicitar repuestos en esta OT.")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    # 4) Valida el form
+    form = SolicitarRepuestoForm(request.POST)
+    if not form.is_valid():
+        for campo, errs in form.errors.items():
+            for e in errs:
+                messages.error(request, f"{campo}: {e}")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    # 5) Mapeo defensivo a tu modelo real
+    field_names = {f.name for f in SolicitudRepuesto._meta.get_fields()}
+    data = {
+        "orden_trabajo": ot,
+        "repuesto": form.cleaned_data["repuesto"],
+        "creado_por": u,     # <- clave para evitar el NOT NULL
+        "estado": "PENDIENTE"
+    }
+
+    # cantidad
+    cantidad = form.cleaned_data.get("cantidad", 1)
+    if "cantidad" in field_names:
+        data["cantidad"] = cantidad
+    elif "cantidad_solicitada" in field_names:
+        data["cantidad_solicitada"] = cantidad
+    elif "cantidad_pedida" in field_names:
+        data["cantidad_pedida"] = cantidad
+    else:
+        messages.error(request, "No se encontró un campo de cantidad en el modelo de solicitudes.")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    # observación (opcional)
+    obs_val = form.cleaned_data.get("observacion") or ""
+    if "observacion" in field_names:
+        data["observacion"] = obs_val
+    elif "observaciones" in field_names:
+        data["observaciones"] = obs_val
+    elif "nota" in field_names:
+        data["nota"] = obs_val
+    # si no existe, se omite silenciosamente
+
+    # 6) Crear en BD con transacción
+    try:
+        with transaction.atomic():
+            sol = SolicitudRepuesto.objects.create(**data)
+    except IntegrityError as e:
+        messages.error(request, f"No se pudo crear la solicitud (integridad de datos): {e}")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+    except Exception as e:
+        messages.error(request, f"Error al crear la solicitud: {e}")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    messages.success(request, f"Solicitud de repuesto creada (ID {sol.id}).")
+    return redirect("ot_detalle", numero_ot=numero_ot)
+
+
+
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+
+@require_POST
+@login_required
+def ot_guardar_observaciones(request, numero_ot):
+    ot = get_object_or_404(OrdenTrabajo, numero_ot=numero_ot)
+    user = get_usuario_app_from_request(request)
+    role = get_user_role_dominio(request)
+
+    # Mecánico asignado o supervisor/admin/jefe_taller
+    if not (user and (ot.mecanico_asignado_id == user.id or role in ("ADMIN","SUPERVISOR","JEFE_TALLER"))):
+        return JsonResponse({"ok": False, "error": "Sin permiso"}, status=403)
+
+    texto = (request.POST.get("texto") or "").strip()
+
+    tarea, created = TareaOT.objects.get_or_create(
+        orden_trabajo=ot,
+        titulo="OBS_MECANICO",
+        defaults={"descripcion": texto, "mecanico_asignado": user}
+    )
+    if not created:
+        tarea.descripcion = texto
+        if not tarea.mecanico_asignado_id:
+            tarea.mecanico_asignado = user
+        tarea.save(update_fields=["descripcion", "mecanico_asignado"])
+
+    return JsonResponse({"ok": True})
+
+
+
+CHECKLIST_CATALOGO = {
+    # clave “tipo_trabajo”: lista de (code, texto)
+    "mantenimiento": [
+        ("niv-aceite", "Verificar nivel de aceite"),
+        ("frenos", "Revisión de frenos"),
+        ("luces", "Chequeo de luces"),
+    ],
+    "neumáticos": [
+        ("presion", "Revisar presión de neumáticos"),
+        ("desgaste", "Inspección de desgaste"),
+    ],
+}
+DEFAULT_CHECKLIST = "mantenimiento"
+
+
+from django.views.decorators.http import require_POST
+
+def _perm_mecanico_o_sup(request, ot):
+    user = get_usuario_app_from_request(request)
+    role = get_user_role_dominio(request)
+    return bool(user and (ot.mecanico_asignado_id == user.id or role in ("ADMIN","SUPERVISOR","JEFE_TALLER")))
+
+@login_required
+@require_POST
+def ot_checklist_toggle(request, numero_ot):
+    ot = get_object_or_404(OrdenTrabajo, numero_ot=numero_ot)
+    if not _perm_mecanico_o_sup(request, ot):
+        return JsonResponse({"ok": False, "error": "Sin permiso"}, status=403)
+
+    code = (request.POST.get("code") or "").strip()
+    estado = (request.POST.get("ok") or "0")  # "1"=OK, "0"=quitar
+    obs = (request.POST.get("obs") or "").strip()
+
+    titulo = f"CHK:{code}"
+    tarea, created = TareaOT.objects.get_or_create(
+        orden_trabajo=ot,
+        titulo=titulo,
+        defaults={"descripcion": "OK" if estado == "1" else f"NO: {obs}" if obs else "NO"}
+    )
+    if not created:
+        if estado == "1":
+            tarea.descripcion = "OK"
+        else:
+            tarea.descripcion = f"NO: {obs}" if obs else "NO"
+        tarea.save(update_fields=["descripcion"])
+
+    return JsonResponse({"ok": True})
+
+
+
+
+from .models import SolicitudRepuesto, MovimientoRepuesto, TipoMovimiento, EstadoSolicitud, Repuesto
+from .services.inventario_client import InventarioClient
+
+from django.conf import settings  # (asegúrate de tenerlo)
+from django.utils import timezone
+from app_taller.models import MovimientoRepuesto
+
+def _rep_code(rep):
+    # Fallbacks robustos para código del repuesto
+    for attr in ("codigo", "codigo_interno", "sku"):
+        if hasattr(rep, attr) and getattr(rep, attr):
+            return getattr(rep, attr)
+    return f"ID-{rep.id}"  # último recurso: usa el ID
+
+# --- IMPORTS NECESARIOS (arriba en views.py) ---
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from django.utils import timezone
+
+from .models import (
+    OrdenTrabajo,
+    SolicitudRepuesto,
+    MovimientoRepuesto,
+    Repuesto,
+    # si tienes enums/choices, impórtalos:
+    # TipoMovimiento, EstadoSolicitud
+)
+
+
+from django.db import IntegrityError
+
+# ---------- Helpers ----------
+
+def _rep_code(rep: Repuesto) -> str:
+    """Obtiene un código para el repuesto aunque tu modelo no tenga 'codigo'."""
+    for attr in ("codigo", "codigo_interno", "sku"):
+        if hasattr(rep, attr):
+            val = getattr(rep, attr)
+            if val:
+                return val
+    return f"ID-{rep.id}"
+
+def _mv_fields():
+    """Set de nombres de campos que realmente existen en tu MovimientoRepuesto."""
+    return {f.name for f in MovimientoRepuesto._meta.get_fields()}
+
+def _resolve_taller(ot, user_app):
+    """Devuelve un Taller para cumplir NOT NULL en el movimiento."""
+    if getattr(ot, "taller", None):
+        return ot.taller
+    if user_app and getattr(user_app, "taller", None):
+        return user_app.taller
+    return None
+
+def _set_if_exists(mov_kwargs: dict, fields: set, key: str, value):
+    """Setea mov_kwargs[key] si el campo existe en el modelo."""
+    if key in fields and value is not None:
+        mov_kwargs[key] = value
+
+# ---------- Vista ----------
+
+
+
+@login_required
+def ot_confirmar_entrega(request, numero_ot, solicitud_id):
+    ot = get_object_or_404(OrdenTrabajo, numero_ot=numero_ot)
+    sol = get_object_or_404(SolicitudRepuesto, pk=solicitud_id, orden_trabajo=ot)
+
+    # Permisos: solo supervisor / admin / jefe taller
+    rol = (get_user_role_dominio(request) or "").upper().strip()
+    es_supervisor = rol in {"ADMIN", "SUPERVISOR", "JEFE", "JEFE_TALLER"} or request.user.is_staff or request.user.is_superuser
+    if not es_supervisor:
+        messages.error(request, "No tienes permiso para confirmar entregas.")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    # Usuario de dominio (para auditoría/movimiento)
+    u = get_usuario_app_from_request(request)
+
+    # Datos de la solicitud
+    rep = sol.repuesto
+    # soporta distintos nombres de campo para cantidad
+    cant = (
+        getattr(sol, "cantidad", None)
+        or getattr(sol, "cantidad_solicitada", None)
+        or getattr(sol, "cantidad_pedida", None)
+        or 1
+    )
+
+    # Payload para API de inventario (tolerante a tu modelo local)
+    payload = {
+        "ot": ot.numero_ot,
+        "item_code": _rep_code(rep),                      # usa sku/codigo si existe
+        "item_name": getattr(rep, "nombre", str(rep)),   # nombre amigable
+        "quantity": cant,
+        "solicitud_id": sol.id,
+    }
+
+    # 1) Intentar Confirmar contra API
+    from django.conf import settings
+
+    api_ok = False
+    api_error = None
+    try:
+        inv = InventarioClient()
+        _ = inv.confirmar_entrega(payload)   # respeta el flag internamente
+        api_ok = True
+    except Exception as e:
+        api_error = e
+        api_ok = False
+# ... (persistencia local como ya tienes)
+
+
+    # 2) Registrar SIEMPRE movimiento local (éxito o fallback)
+    fields = _mv_fields()
+    mov_kwargs = {}
+
+    # mapeos obligatorios (usa alternativas si el nombre de campo difiere en tu modelo)
+    # orden_trabajo / ot_id
+    if "orden_trabajo" in fields:
+        mov_kwargs["orden_trabajo"] = ot
+    elif "ot" in fields:
+        mov_kwargs["ot"] = ot
+    elif "orden_trabajo_id" in fields:
+        mov_kwargs["orden_trabajo_id"] = ot.id
+
+    # repuesto / item
+    if "repuesto" in fields:
+        mov_kwargs["repuesto"] = rep
+    elif "item" in fields:
+        mov_kwargs["item"] = rep
+    elif "repuesto_id" in fields:
+        mov_kwargs["repuesto_id"] = rep.id
+
+    # cantidad / cantidad_entregada
+    if "cantidad" in fields:
+        mov_kwargs["cantidad"] = cant
+    elif "cantidad_entregada" in fields:
+        mov_kwargs["cantidad_entregada"] = cant
+
+    # tipo del movimiento
+    for k, v in (
+        ("tipo", "ENTREGA"),
+        ("tipo_movimiento", "ENTREGA"),
+        ("movimiento", "ENTREGA"),
+    ):
+        _set_if_exists(mov_kwargs, fields, k, v)
+
+    # usuario creador
+    for k in ("usuario", "creado_por", "registrado_por"):
+        _set_if_exists(mov_kwargs, fields, k, u)
+
+    # timestamp / fecha
+    now = timezone.now()
+    for k in ("timestamp", "fecha", "fecha_movimiento", "fecha_creacion"):
+        _set_if_exists(mov_kwargs, fields, k, now)
+
+    # estado inventario
+    estado_inv = "CONFIRMADO" if api_ok else "PENDIENTE"
+    for k in ("estado_inventario", "estado_movimiento", "estado"):
+        _set_if_exists(mov_kwargs, fields, k, estado_inv)
+
+    # taller (NOT NULL en tu error)
+    tall = _resolve_taller(ot, u)
+    if not tall:
+        messages.error(request, "No se pudo determinar el taller para el movimiento (OT o usuario sin taller).")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+    if "taller" in fields:
+        mov_kwargs["taller"] = tall
+    elif "taller_id" in fields:
+        mov_kwargs["taller_id"] = tall.id
+
+    # Guarda el movimiento
+   # 1) Movimiento en tu BD (usando los nombres reales de tu modelo)
+    try:
+        mov = MovimientoRepuesto(
+            orden_trabajo=ot,
+            repuesto=rep,
+            cantidad=cant,
+            movido_por=u,        # 
+        )
+        # Si tu modelo tiene 'taller' como NOT NULL, adjúntalo:
+        try:
+            mov.taller = ot.taller
+        except AttributeError:
+            # si tu modelo no tiene 'taller', ignora
+            pass
+
+        # Si tu modelo tiene 'estado_inventario' y quieres reflejar el estado local:
+        try:
+            mov.estado_inventario = "CONFIRMADO" if api_ok else "PENDIENTE"
+        except AttributeError:
+            pass
+
+        mov.save()
+    except Exception as e:
+        messages.error(request, f"No se pudo registrar el movimiento (integridad de datos): {e}")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    # 2) Actualiza estado de la solicitud
+    sol.estado = "RECIBIDA" if api_ok else "APROBADA"
+    if hasattr(sol, "confirmada_por"):
+        sol.confirmada_por = u
+    if hasattr(sol, "fecha_confirmacion"):
+        sol.fecha_confirmacion = timezone.now()
+    sol.save()
+
+    # 3) Actualizar estado de la solicitud local
+    # Usa tus choices si existen, sino string plano.
+    estado_recibida = getattr(EstadoSolicitud, "RECIBIDA", "RECIBIDA")
+    estado_aprobada = getattr(EstadoSolicitud, "APROBADA", "APROBADA")
+
+    sol.estado = estado_recibida if api_ok else estado_aprobada
+    if hasattr(sol, "confirmada_por") and u:
+        sol.confirmada_por = u
+    if hasattr(sol, "fecha_confirmacion"):
+        sol.fecha_confirmacion = now
+
+    # Solo actualiza los campos que realmente existan
+    update_fields = ["estado"]
+    if "confirmada_por" in {f.name for f in sol._meta.get_fields()}:
+        update_fields.append("confirmada_por")
+    if "fecha_confirmacion" in {f.name for f in sol._meta.get_fields()}:
+        update_fields.append("fecha_confirmacion")
+    sol.save(update_fields=update_fields)
+
+    # 4) Mensajes al usuario
+    if api_ok:
+        messages.success(request, f"Entrega confirmada en Inventario. Solicitud #{sol.id} → {estado_recibida}")
+    else:
+        messages.warning(
+            request,
+            f"API inventario no disponible ({api_error!s}). "
+            f"Movimiento local registrado. Solicitud #{sol.id} → {estado_aprobada} (pendiente de sincronizar)"
+        )
+
+    return redirect("ot_detalle", numero_ot=numero_ot)

@@ -230,14 +230,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 import os
 
-# --- Inventario API ---
-INV_API_BASE   = os.getenv("INV_API_BASE",   "https://inventario.example.com/api")
-INV_API_TOKEN  = os.getenv("INV_API_TOKEN",  "dev-token")
-INV_API_MODE   = os.getenv("INV_API_MODE",   "MOCK")  # MOCK | REAL | OFF
-INV_API_TIMEOUT = int(os.getenv("INV_API_TIMEOUT", "5"))
-INV_API_RETRIES = int(os.getenv("INV_API_RETRIES", "2"))
 
 # --- Notificaciones API ---
 NOTIFY_API_BASE = os.getenv("NOTIFY_API_BASE", "https://notify.example.com/api")
 NOTIFY_API_TOKEN = os.getenv("NOTIFY_API_TOKEN", "dev-token")
 NOTIFY_API_MODE  = os.getenv("NOTIFY_API_MODE",  "MOCK")  # MOCK | REAL | OFF
+
+

@@ -9,6 +9,7 @@ from app_taller.views import (
     AdminDashboard, SupervisorDashboard, MecanicoDashboard, ChoferDashboard, IngresoNuevoView, 
     OTListView, OTDetalleView, ot_cambiar_estado, ot_asignar_mecanico, OTSupervisorListView,
     ot_cambiar_prioridad, vehiculo_cambiar_estado, ot_subir_adjuntos, OTMecanicoListView, ot_mecanico_accion, ot_entregar_repuesto
+    ,ot_solicitar_repuesto, ot_guardar_observaciones, ot_checklist_toggle, ot_confirmar_entrega
 
 )
 
@@ -49,7 +50,13 @@ urlpatterns = [
     path("ots/<str:numero_ot>/mecanico/<str:accion>/", ot_mecanico_accion, name="ot_mecanico_accion"),
     path("ots/<str:numero_ot>/entrega/", ot_entregar_repuesto, name="ot_entregar_repuesto"),
 
+    path("ots/<str:numero_ot>/solicitar-repuesto/", ot_solicitar_repuesto, name="ot_solicitar_repuesto"),
 
-   
+    path("ots/<str:numero_ot>/observaciones/guardar/", ot_guardar_observaciones, name="ot_guardar_observaciones"),
+
+   path("ots/<str:numero_ot>/checklist/toggle/", ot_checklist_toggle, name="ot_checklist_toggle"),
+
+    path("ots/<str:numero_ot>/solicitud/<int:solicitud_id>/confirmar-entrega/",ot_confirmar_entrega, name="ot_confirmar_entrega")
+
     
 ]
