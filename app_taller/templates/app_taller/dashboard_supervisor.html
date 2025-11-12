@@ -1,14 +1,11 @@
+
+
+
 {% extends "app_taller/base.html" %}
-{% load static %}
-<link rel="stylesheet" href="{% static 'css/base.css' %}">
-<script src="{% static 'js/main.js' %}" defer></script>
-
-
-
-{% block title %}Dashboard Supervisor{% endblock %}
-
 
 {% block content %}
+
+
 <h2>Bienvenido,
     {{ usuario_app.nombre_completo|default:request.user.get_full_name|default:request.user.username }} 👋
   </h2>
@@ -17,9 +14,79 @@
 
 
   <!-- dashboard_supervisor.html -->
+ <div style="margin:10px 0 18px; display:flex; gap:8px; flex-wrap:wrap;">
   <a class="btn btn-primary" href="{% url 'ot_list' %}?estado=EN_PROCESO">Ver OTs en proceso</a>
   <a class="btn" href="{% url 'ot_list' %}?estado=PENDIENTE">Ver OTs pendientes</a>
   <a class="btn" href="{% url 'ot_list' %}">Ver todas</a>
+</div>
 
 
+<div class="kpi-grid">
+  <div class="kpi ok">
+    <div class="kpi-label">OTs Total</div>
+    <div class="kpi-value">{{ kpis.total }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">En proceso</div>
+    <div class="kpi-value">{{ kpis.en_proceso }}</div>
+  </div>
+  <div class="kpi warn">
+    <div class="kpi-label">Pendientes</div>
+    <div class="kpi-value">{{ kpis.pendientes }}</div>
+  </div>
+  <div class="kpi ok">
+    <div class="kpi-label">Cerradas</div>
+    <div class="kpi-value">{{ kpis.cerradas }}</div>
+  </div>
+  <div class="kpi warn">
+    <div class="kpi-label">Prioridad Alta</div>
+    <div class="kpi-value">{{ kpis.prio_alta }}</div>
+  </div>
+  <div class="kpi danger">
+    <div class="kpi-label">Prioridad Crítica</div>
+    <div class="kpi-value">{{ kpis.prio_critica }}</div>
+  </div>
+</div>
+
+<div class="grid-2" style="display:grid;grid-template-columns:1.2fr .8fr;gap:14px;">
+  <section class="card">
+    <h3>OTs recientes</h3>
+    <table class="table-compact">
+      <thead><tr><th>N°</th><th>Patente</th><th>Estado</th><th>Prioridad</th><th>Mecánico</th><th>F. Apertura</th></tr></thead>
+      <tbody>
+        {% for ot in recientes %}
+        <tr onclick="location.href='{% url 'ot_detalle' numero_ot=ot.numero_ot %}'" style="cursor:pointer">
+          <td><strong>#{{ ot.numero_ot }}</strong></td>
+          <td>{{ ot.vehiculo.patente }}</td>
+          <td>{{ ot.get_estado_display }}</td>
+          <td>{{ ot.get_prioridad_display }}</td>
+          <td>{{ ot.mecanico_asignado.nombre_completo|default:"—" }}</td>
+          <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">Sin registros</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h3>Últimos cambios</h3>
+    <table class="table-compact">
+      <thead><tr><th>Fecha</th><th>OT</th><th>De → A</th><th>Por</th></tr></thead>
+      <tbody>
+        {% for log in ult_logs %}
+        <tr>
+          <td>{{ log.fecha_cambio|date:"d-m-Y H:i" }}</td>
+          <td><a href="{% url 'ot_detalle' numero_ot=log.orden_trabajo.numero_ot %}">#{{ log.orden_trabajo.numero_ot }}</a></td>
+          <td>{{ log.estado_anterior|default:"—" }} → <strong>{{ log.estado_nuevo }}</strong></td>
+          <td>{{ log.cambiado_por.nombre_completo }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">Sin actividad</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
 {% endblock %}

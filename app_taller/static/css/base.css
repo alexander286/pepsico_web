@@ -215,110 +215,69 @@ textarea{min-height:42px}
 
 
 
-/* ===== OT LIST / DASHBOARD SUPERVISOR ===== */
-.ot-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-  gap: 8px;
+/* ====== LISTADO OTs (tabla + filtros) ====== */
+.ot-list-header{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px
 }
+.ot-filters{display:flex;flex-wrap:wrap;gap:8px}
+.ot-filters input,.ot-filters select{
+  background:#0b1220;border:1px solid #1f2a44;color:#eaf2ff;border-radius:10px;padding:6px 10px;font-size:.85rem
+}
+.btn-icon{
+  background:#203152;border:1px solid #2a3f6d;color:#eaf2ff;border-radius:10px;padding:6px 10px;font-size:.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px
+}
+.btn-icon:hover{background:#2a4273}
 
-.ot-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+.ot-table{width:100%;border-collapse:separate;border-spacing:0 8px}
+.ot-table th,.ot-table td{padding:10px 12px;text-align:left}
+.ot-table thead th{color:#9fb2df;font-size:.85rem}
+.ot-table tbody tr{background:#0b1220;border:1px solid #1f2a44;transition:transform .1s, box-shadow .2s}
+.ot-table tbody tr:hover{transform:translateY(-2px);box-shadow:0 0 10px rgba(59,130,246,.15)}
+.ot-table tbody tr td:first-child{border-radius:12px 0 0 12px}
+.ot-table tbody tr td:last-child{border-radius:0 12px 12px 0}
 
-.ot-filters select,
-.ot-filters input {
-  background: #0b1220;
-  border: 1px solid #1f2a44;
-  color: #eaf2ff;
-  border-radius: 10px;
-  padding: 6px 10px;
-  font-size: 0.85rem;
-}
+.badge{font-weight:600;font-size:.82rem;padding:4px 8px;border-radius:999px;display:inline-block}
+.badge.state-en_proceso{background:#1e3a8a;color:#a7c3ff;border:1px solid #3b82f6}
+.badge.state-pendiente{background:#221a02;color:#ffe9a6;border:1px solid #854d0e}
+.badge.state-cerrada{background:#052e1a;color:#aef1c5;border:1px solid #15803d}
+.badge.state-cancelada{background:#3f0000;color:#ffb5b5;border:1px solid #991b1b}
 
-.ot-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 8px;
-}
+.badge.prio-baja{background:#0b2e13;color:#b7f7c6;border:1px solid #16a34a}
+.badge.prio-media{background:#1e293b;color:#c7d2fe;border:1px solid #6366f1}
+.badge.prio-alta{background:#3b1d00;color:#ffd9a3;border:1px solid #f59e0b}
+.badge.prio-critica{background:#3b0000;color:#ffc2c2;border:1px solid #ef4444}
 
-.ot-table th,
-.ot-table td {
-  padding: 10px 12px;
-  text-align: left;
-}
+/* fila clickeable */
+.tr-link{cursor:pointer}
+.tr-link a{color:inherit;text-decoration:none}
 
-.ot-table thead th {
-  color: #9fb2df;
-  font-size: 0.85rem;
-}
 
-.ot-table tbody tr {
-  background: #0b1220;
-  border: 1px solid #1f2a44;
-  transition: transform 0.1s, box-shadow 0.2s;
-}
 
-.ot-table tbody tr:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
-}
 
-.ot-table tbody tr td:first-child {
-  border-radius: 12px 0 0 12px;
-}
-.ot-table tbody tr td:last-child {
-  border-radius: 0 12px 12px 0;
-}
 
-.ot-status {
-  font-weight: 600;
-  font-size: 0.82rem;
-  padding: 4px 8px;
-  border-radius: 999px;
-  display: inline-block;
-  text-transform: capitalize;
-}
 
-.ot-status.en_proceso {
-  background: #1e3a8a;
-  color: #a7c3ff;
-  border: 1px solid #3b82f6;
-}
-.ot-status.cerrada {
-  background: #052e1a;
-  color: #aef1c5;
-  border: 1px solid #15803d;
-}
-.ot-status.pendiente {
-  background: #221a02;
-  color: #ffe9a6;
-  border: 1px solid #854d0e;
-}
-.ot-status.cancelada {
-  background: #3f0000;
-  color: #ffb5b5;
-  border: 1px solid #991b1b;
-}
 
-.btn-icon {
-  background: #203152;
-  border: 1px solid #2a3f6d;
-  color: #eaf2ff;
-  border-radius: 10px;
-  padding: 6px 10px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
 
-.btn-icon:hover {
-  background: #2a4273;
-}
+
+
+
+/* ====== KPIs Dashboard ====== */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:14px 0}
+.kpi{background:#0b1220;border:1px solid #1f2a44;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px;min-height:90px}
+.kpi .kpi-label{color:#9fb2df;font-size:.85rem}
+.kpi .kpi-value{font-size:1.6rem;font-weight:800;letter-spacing:.5px;color:#eef4ff}
+.kpi.ok{box-shadow:0 0 0 1px rgba(16,185,129,.25) inset}
+.kpi.warn{box-shadow:0 0 0 1px rgba(245,158,11,.25) inset}
+.kpi.danger{box-shadow:0 0 0 1px rgba(239,68,68,.25) inset}
+
+/* tablas compactas */
+.table-compact{width:100%;border-collapse:separate;border-spacing:0 8px}
+.table-compact th,.table-compact td{padding:8px 10px;text-align:left}
+.table-compact tbody tr{background:#0b1220;border:1px solid #1f2a44}
+.table-compact tbody tr td:first-child{border-radius:10px 0 0 10px}
+.table-compact tbody tr td:last-child{border-radius:0 10px 10px 0}
+
+
+
+/* en tu base.css */
+.ta-right { text-align: right; }

@@ -1,11 +1,10 @@
 {% extends "app_taller/base.html" %}
-{% load static %}
-{# VISTA DONDE VE TODAS LAS ORDENES CON FILTRO #}
 {% block content %}
-<h1>Órdenes de Trabajo</h1>
 
-<form class="card" method="get" style="padding:1rem; margin-bottom:1rem;">
-  <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr; gap: 0.75rem;">
+<h2>Órdenes de Trabajo</h2>
+
+<div class="ot-list-header">
+  <form class="ot-filters" method="get">
     <input type="text" name="q" placeholder="Buscar patente / N° OT" value="{{ f.q }}">
     <select name="estado">
       <option value="">Estado (todos)</option>
@@ -30,84 +29,73 @@
 
     <select name="prioridad">
       <option value="">Prioridad (todas)</option>
-    {% for val,label in prioridades %}
-      <option value="{{ val }}" {% if f.prioridad == val %}selected{% endif %}>{{ label }}</option>
-    {% endfor %}
+      {% for val,label in prioridades %}
+        <option value="{{ val }}" {% if f.prioridad == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
     </select>
 
+    <button class="btn-icon" type="submit">🔍 Filtrar</button>
+    <a class="btn-icon" href="{% url 'ot_list' %}">🧽 Limpiar</a>
+  </form>
 
-    
-  </div>
-
-
- 
-
-    
-
-
-  <div style="margin-top:0.75rem;">
-    <button class="btn btn-primary" type="submit">Filtrar</button>
-    <a class="btn" href="{% url 'ot_list' %}">Limpiar</a>
-  </div>
-</form>
+  <a href="{% url 'ingreso_nuevo' %}" class="btn-icon">➕ Nueva OT</a>
+</div>
 
 <div class="card" style="overflow:auto;">
-  <table class="table">
+  <table class="ot-table">
     <thead>
-  <tr>
-    <th>N° OT</th>
-    <th>Patente</th>
-    <th>Estado</th>
-    <th>Prioridad</th>
-    <th>Mecánico</th>
-    <th>Supervisor (últ. acción)</th>  
-    <th>Taller</th>
-    <th>F. Apertura</th>
-  </tr>
-</thead>
-<tbody>
-  {% for ot in ots %}
-  <tr>
-    <td><a href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">{{ ot.numero_ot }}</a></td>
-    <td>{{ ot.vehiculo.patente }}</td>
-    <td>{{ ot.get_estado_display }}</td>
-    <td>{{ ot.get_prioridad_display }}</td>
-    <td>{{ ot.mecanico_asignado.nombre_completo|default:"—" }}</td>
-
-    {# Usa el prefetch: ot.hist es una lista ya ordenada desc por fecha_cambio #}
-    <td>
-      {% if ot.hist and ot.hist.0.cambiado_por %}
-        {{ ot.hist.0.cambiado_por.nombre_completo }}
-      {% else %}
-        — 
-      {% endif %}
-    </td>
-
-    <td>{{ ot.taller.nombre }}</td>
-    <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
-  </tr>
-  {% empty %}
-  <tr><td colspan="7">No hay Órdenes con estos filtros.</td></tr>
-  {% endfor %}
-</tbody>
-
+      <tr>
+        <th>N° OT</th>
+        <th>Patente</th>
+        <th>Estado</th>
+        <th>Prioridad</th>
+        <th>Mecánico</th>
+        <th>Supervisor (últ. acción)</th>
+        <th>Taller</th>
+        <th>F. Apertura</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ot in ots %}
+      {% with estado_code=ot.estado|lower prio_code=ot.prioridad|lower %}
+      <tr class="tr-link" onclick="location.href='{% url 'ot_detalle' numero_ot=ot.numero_ot %}'">
+        <td><strong>#{{ ot.numero_ot }}</strong></td>
+        <td>{{ ot.vehiculo.patente }}</td>
+        <td>
+          <span class="badge state-{{ estado_code|cut:'_' }}">{{ ot.get_estado_display }}</span>
+        </td>
+        <td>
+          <span class="badge prio-{{ prio_code|cut:'_' }}">{{ ot.get_prioridad_display }}</span>
+        </td>
+        <td>{{ ot.mecanico_asignado.nombre_completo|default:"—" }}</td>
+        <td>
+          {% if ot.hist and ot.hist.0.cambiado_por %}
+            {{ ot.hist.0.cambiado_por.nombre_completo }}
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ ot.taller.nombre }}</td>
+        <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
+        <td><a class="btn-icon" href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">👁 Ver</a></td>
+      </tr>
+      {% endwith %}
+      {% empty %}
+        <tr><td colspan="9" style="text-align:center;">No hay Órdenes con estos filtros.</td></tr>
+      {% endfor %}
+    </tbody>
   </table>
 </div>
 
 {% if is_paginated %}
-<nav style="margin-top:1rem;">
-  {% if page_obj.has_previous %}
-    <a class="btn"
-       href="?page={{ page_obj.previous_page_number }}{% if qs %}&{{ qs }}{% endif %}">« Anterior</a>
-  {% endif %}
-
-  <span style="margin:0 0.75rem;">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-
-  {% if page_obj.has_next %}
-    <a class="btn"
-       href="?page={{ page_obj.next_page_number }}{% if qs %}&{{ qs }}{% endif %}">Siguiente »</a>
-  {% endif %}
-</nav>
+  <nav style="margin-top:1rem;">
+    {% if page_obj.has_previous %}
+      <a class="btn" href="?page={{ page_obj.previous_page_number }}{% if qs %}&{{ qs }}{% endif %}">« Anterior</a>
+    {% endif %}
+    <span style="margin:0 0.75rem;">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a class="btn" href="?page={{ page_obj.next_page_number }}{% if qs %}&{{ qs }}{% endif %}">Siguiente »</a>
+    {% endif %}
+  </nav>
 {% endif %}
 
 {% endblock %}

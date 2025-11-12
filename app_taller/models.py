@@ -38,6 +38,7 @@ class PrioridadOT(models.TextChoices):
     BAJA = "BAJA", "Baja"
     NORMAL = "NORMAL", "Normal"
     ALTA = "ALTA", "Alta"
+    CRITICA = "CRITICA", "Crítica" 
 
 
 class EstadoTarea(models.TextChoices):
@@ -186,6 +187,7 @@ class ReservaVehiculo(models.Model):
 
 
 class OrdenTrabajo(models.Model):
+    
     numero_ot = models.CharField(max_length=20, unique=True)
     vehiculo = models.ForeignKey(Vehiculo, on_delete=models.PROTECT)
     taller = models.ForeignKey(Taller, on_delete=models.PROTECT)

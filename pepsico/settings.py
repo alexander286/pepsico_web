@@ -56,6 +56,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'app_taller',
+    'django.contrib.humanize',
 ]
 
 MIDDLEWARE = [

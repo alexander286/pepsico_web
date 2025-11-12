@@ -1,5 +1,6 @@
 from django.shortcuts import render
 import time
+from decimal import Decimal
 from django.db import OperationalError, transaction
 # Create your views here.
 from .utils import get_usuario_app_from_request, get_user_role_dominio
@@ -125,6 +126,40 @@ class SupervisorDashboard(TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["usuario_app"] = get_usuario_app_from_request(self.request)
+        qs = (OrdenTrabajo.objects
+              .select_related("taller", "mecanico_asignado", "vehiculo")
+              .prefetch_related("logestadoot_set"))
+
+        # KPIs básicos
+        total = qs.count()
+        en_proceso = qs.filter(estado=EstadoOT.EN_PROCESO).count()
+        pendientes = qs.filter(estado=EstadoOT.PENDIENTE).count() if hasattr(EstadoOT, "PENDIENTE") else 0
+        cerradas = qs.filter(estado=EstadoOT.CERRADA).count() if hasattr(EstadoOT, "CERRADA") else 0
+
+        # Por prioridad
+        prio_alta = qs.filter(prioridad=getattr(PrioridadOT, "ALTA", "ALTA")).count() if hasattr(qs.model, "prioridad") else 0
+        prio_critica = qs.filter(prioridad=getattr(PrioridadOT, "CRITICA", "CRITICA")).count() if hasattr(qs.model, "prioridad") else 0
+
+        # Últimas acciones (bitácora)
+        ult_logs = (LogEstadoOT.objects
+                    .select_related("orden_trabajo", "cambiado_por")
+                    .order_by("-fecha_cambio")[:10])
+
+        # Tabla “mis OTs recientes”
+        recientes = qs.order_by("-fecha_apertura")[:8]
+
+        ctx.update({
+            "kpis": {
+                "total": total,
+                "en_proceso": en_proceso,
+                "pendientes": pendientes,
+                "cerradas": cerradas,
+                "prio_alta": prio_alta,
+                "prio_critica": prio_critica,
+            },
+            "recientes": recientes,
+            "ult_logs": ult_logs,
+        })
         return ctx
 
 class MecanicoDashboard(TemplateView):
@@ -739,7 +774,27 @@ class OTDetalleView(DetailView):
         ctx["chk_ok"] = ok_items
         ctx["chk_pct"] = round((ok_items * 100 / total_items), 1) if total_items else 0.0
 
+        ctx["movimientos_salida"] = (
+            MovimientoRepuesto.objects
+            .filter(orden_trabajo=ot, tipo_movimiento="SALIDA")
+            .select_related("repuesto")
+            .order_by("-fecha_movimiento")
+        )
 
+        movs = (MovimientoRepuesto.objects
+        .filter(orden_trabajo=ot)
+        .select_related("repuesto")
+        .order_by("-fecha_movimiento"))
+
+        total_mov = Decimal("0")
+        for m in movs:
+            unit = m.costo_unitario or (m.repuesto.precio_costo or Decimal("0"))
+            m.unit_to_show = unit
+            m.subtotal = (m.cantidad or 0) * unit
+            total_mov += m.subtotal
+
+        ctx["movs_repuestos"] = movs
+        ctx["total_repuestos_ot"] = total_mov
 
         try:
             inv = InventarioClient()
@@ -1627,6 +1682,9 @@ def ot_confirmar_entrega(request, numero_ot, solicitud_id):
         or 1
     )
 
+
+    
+
     # Payload para API de inventario (tolerante a tu modelo local)
     payload = {
         "ot": ot.numero_ot,
@@ -1773,6 +1831,82 @@ def ot_confirmar_entrega(request, numero_ot, solicitud_id):
             f"API inventario no disponible ({api_error!s}). "
             f"Movimiento local registrado. Solicitud #{sol.id} → {estado_aprobada} (pendiente de sincronizar)"
         )
+
+
+    from decimal import Decimal
+    from django.db import transaction
+
+# ...
+
+    # 2) Registrar SIEMPRE movimiento local (éxito o fallback) + costear
+    try:
+        costo_unit = rep.precio_costo or Decimal("0")
+    except Exception:
+        costo_unit = Decimal("0")
+
+    with transaction.atomic():
+        # --- MOVIMIENTO DE SALIDA CON COSTO ---
+        mov = MovimientoRepuesto.objects.create(
+            taller=ot.taller,                     # NOT NULL en tu modelo
+            repuesto=rep,
+            orden_trabajo=ot,
+            tipo_movimiento="SALIDA",             # usa TipoMovimiento.SALIDA si lo tienes
+            cantidad=cant,
+            costo_unitario=costo_unit,
+            motivo=f"Entrega confirmada de solicitud #{sol.id}",
+            movido_por=u,
+        )
+
+        # --- ACTUALIZA COSTO ACUMULADO EN LA OT (si el campo existe) ---
+        if hasattr(ot, "total_repuestos"):
+            try:
+                subtotal = (Decimal(cant) * (costo_unit or Decimal("0")))
+                ot.total_repuestos = (ot.total_repuestos or Decimal("0")) + subtotal
+                ot.save(update_fields=["total_repuestos"])
+            except Exception:
+                # no detengas el flujo si falla solo el acumulado
+                pass
+
+        # --- ACTUALIZA ESTADO DE LA SOLICITUD ---
+        estado_recibida = getattr(EstadoSolicitud, "RECIBIDA", "RECIBIDA")
+        estado_aprobada = getattr(EstadoSolicitud, "APROBADA", "APROBADA")
+
+        sol.estado = estado_recibida if api_ok else estado_aprobada
+        if hasattr(sol, "confirmada_por") and u:
+            sol.confirmada_por = u
+        if hasattr(sol, "fecha_confirmacion"):
+            sol.fecha_confirmacion = timezone.now()
+
+        # solo guarda los campos que existan
+        update_fields = ["estado"]
+        field_names = {f.name for f in sol._meta.get_fields()}
+        if "confirmada_por" in field_names: update_fields.append("confirmada_por")
+        if "fecha_confirmacion" in field_names: update_fields.append("fecha_confirmacion")
+        sol.save(update_fields=update_fields)
+
+
+
+
+    precio = getattr(rep, "precio_costo", None) or Decimal("0")
+
+    mov = MovimientoRepuesto(
+        orden_trabajo=ot,
+        repuesto=rep,
+        cantidad=cant,
+        costo_unitario=precio,   # 👈 guarda snapshot del costo
+        movido_por=u,
+    )
+    try:
+        mov.taller = ot.taller
+    except AttributeError:
+        pass
+    try:
+        mov.estado_inventario = "CONFIRMADO" if api_ok else "PENDIENTE"
+    except AttributeError:
+        pass
+
+    mov.save()
+
 
     return redirect("ot_detalle", numero_ot=numero_ot)
 
