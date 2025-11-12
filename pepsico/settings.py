@@ -23,6 +23,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                "django.template.context_processors.settings", 
+                
             ],
         },
     },
@@ -93,11 +95,15 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+        "OPTIONS": {
+            "timeout": 10,  # segundos (sube desde 5 por defecto)
+        },
     }
 }
+
 
 #import os
 #DATABASES = {

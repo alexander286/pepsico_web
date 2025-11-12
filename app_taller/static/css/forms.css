@@ -1,0 +1,60 @@
+/* === Checklist visual fixes === */
+.chk-actions .btn {
+  color: #111;                 /* texto oscuro por defecto */
+  font-weight: 500;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: .45rem;
+  padding: .35rem .6rem;
+  transition: all 0.15s ease;
+}
+
+.chk-actions .btn:hover {
+  filter: brightness(0.93);
+  cursor: pointer;
+}
+
+.btn-success {
+  background-color: #16a34a !important;
+  color: #fff !important;
+  border-color: #15803d;
+}
+
+.btn-warning {
+  background-color: #f59e0b !important;
+  color: #111 !important;
+  border-color: #d97706;
+}
+
+.btn-muted {
+  background-color: #e5e7eb !important;
+  color: #111 !important;
+  border-color: #9ca3af;
+}
+
+.chk-actions .btn.is-selected {
+  outline: 2px solid #1e88e5;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, .08) inset;
+}
+
+
+
+
+.quick-actions .btn { cursor: pointer; }
+.quick-actions .btn:disabled { opacity: .5; cursor: not-allowed; }
+.pause-wrap { display: inline-flex; gap: .5rem; align-items: center; }
+.pause-wrap .input { width: 220px; }
+
+
+
+.chk-actions .btn.is-active { outline: 2px solid #333; }
+.btn.is-loading { position: relative; pointer-events: none; opacity: .7; }
+.btn.is-loading::after {
+  content: "";
+  position: absolute; right: 8px; top: 50%; width: 12px; height: 12px;
+  margin-top: -6px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+

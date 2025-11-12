@@ -1,389 +1,209 @@
 {% extends "app_taller/base.html" %}
+{% load static %}
+
+
 {% block content %}
 <h2>OT #{{ ot.numero_ot }}</h2>
 
-
-<!-- VISTA DEL SUPERVISOR AL ABRIR LA OTS-->
 <div class="card">
-  <div><b>Patente:</b> {{ ot.vehiculo.patente }}</div>
-  <div><b>Marca:</b> {{ ot.vehiculo.marca|default:"—" }}</div>
-  <div><b>Modelo:</b> {{ ot.vehiculo.modelo|default:"—" }}</div>
-  <div><b>Año del modelo:</b> {{ ot.vehiculo.año_modelo|default:"—" }}</div>
-  <div><b>Chofer que registró:</b> {{ ot.usuario_solicitante.nombre_completo|default:"—" }}</div>
-  <div><b>Prioridad:</b> {{ ot.get_prioridad_display }}</div>
-  <div><b>Estado del vehiculo:</b> {{ ot.vehiculo.get_estado_display }}</div>
-  <div><b>Estado OT:</b> {{ ot.estado }}</div>
-  <div><b>Mecánico asignado:</b> {{ ot.mecanico_asignado|default:"—" }}</div>
-  <div><b>Taller:</b> {{ ot.taller.nombre }}</div>
-  <div><b>Descripción:</b> {{ ot.descripcion_problema|default:"—" }}</div>
-  <div><b>Apertura:</b> {{ ot.fecha_apertura }}</div>
+  <div class="badges">
+    <span class="badge info">🚗 Vehículo: {{ ot.vehiculo.patente }}</span>
+    <span class="badge {% if ot.prioridad == 'ALTA' %}warn{% else %}info{% endif %}">🔥 Prioridad: {{ ot.get_prioridad_display }}</span>
+    <span class="badge {% if ot.estado == 'CERRADA' %}ok{% else %}info{% endif %}">📌 Estado OT: <b id="estado-ot">{{ ot.estado }}</b></span>
+    <span class="badge info">🏭 Taller: {{ ot.taller.nombre }}</span>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="meta">
+        <div class="item"><b>Marca</b>{{ ot.vehiculo.marca|default:"—" }}</div>
+        <div class="item"><b>Modelo</b>{{ ot.vehiculo.modelo|default:"—" }}</div>
+        <div class="item"><b>Año modelo</b>{{ ot.vehiculo.año_modelo|default:"—" }}</div>
+        <div class="item"><b>Estado vehículo</b>{{ ot.vehiculo.get_estado_display }}</div>
+        <div class="item"><b>Solicitante</b>{{ ot.usuario_solicitante.nombre_completo|default:"—" }}</div>
+        <div class="item"><b>Mecánico</b>{{ ot.mecanico_asignado|default:"—" }}</div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="label">Apertura</div>
+          <div class="value">{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Tiempo en estado</div>
+          <div class="value"><span id="cronometro" data-inicio="{{ inicio_estado_iso }}">—:—:—</span></div>
+        </div>
+        <div class="kpi">
+          <div class="label">Descripción</div>
+          <div class="value" style="font-weight:500">{{ ot.descripcion_problema|default:"—" }}</div>
+        </div>
+      </div>
+    </div>
+
+    
+    <!-- Columna derecha: acciones rápidas “cards” -->
+    <div style="display:grid;gap:12px">
+      {% if soy_supervisor %}
+      <div class="card">
+        <h3>Asignar mecánico</h3>
+        <form method="post" action="{% url 'ot_asignar_mecanico' numero_ot=ot.numero_ot %}">
+          {% csrf_token %}
+          {{ form_asignar.mecanico }}
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" type="submit">Asignar</button>
+            <button class="btn btn-ghost btn-sm" type="reset">Limpiar</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Cambiar estado</h3>
+        <form method="post" action="{% url 'ot_cambiar_estado' numero_ot=ot.numero_ot %}">
+          {% csrf_token %}
+          {{ form_estado.nuevo_estado }}
+          {{ form_estado.motivo }}
+          <div style="margin-top:8px">
+            <button class="btn btn-sm" type="submit">Cambiar</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <h3>Prioridad</h3>
+        <form method="post" action="{% url 'ot_cambiar_prioridad' numero_ot=ot.numero_ot %}">
+          {% csrf_token %}
+          {{ form_prioridad.prioridad }}
+          <div style="margin-top:8px">
+            <button class="btn btn-primary btn-sm" type="submit">Actualizar</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Estado del vehículo</h3>
+        <form method="post" action="{% url 'vehiculo_cambiar_estado' numero_ot=ot.numero_ot %}">
+          {% csrf_token %}
+          {{ form_estado_vehiculo.estado }}
+          <div style="margin-top:8px">
+            <button class="btn btn-primary btn-sm" type="submit">Actualizar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 
-
-
-
-<hr/>
-
-<h3>Acciones</h3>
-
-{# Solo supervisor / admin / jefe de taller #}
-{% if soy_supervisor %}
-<section class="card">
-  <h3>Asignar mecánico</h3>
-  <form method="post" action="{% url 'ot_asignar_mecanico' numero_ot=ot.numero_ot %}">
-    {% csrf_token %}
-    {{ form_asignar.mecanico }}
-    <button class="btn btn-primary btn-sm" type="submit">Asignar mecánico</button>
-  </form>
-</section>
-
-<section class="card">
-  <h3>Cambiar estado</h3>
-  <form method="post" action="{% url 'ot_cambiar_estado' numero_ot=ot.numero_ot %}">
-    {% csrf_token %}
-    {{ form_estado.nuevo_estado }}   {# <- este es el campo correcto #}
-    {{ form_estado.motivo }}
-    <button class="btn btn-sm" type="submit">Cambiar</button>
-  </form>
-</section>
-{% endif %}
-
-
-
-<h3>Prioridad</h3>
-<form method="post" action="{% url 'ot_cambiar_prioridad' numero_ot=ot.numero_ot %}">
-  {% csrf_token %}
-  {{ form_prioridad.prioridad }}
-  <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
-</form>
-
-<h3>Estado del vehículo</h3>
-<form method="post" action="{% url 'vehiculo_cambiar_estado' numero_ot=ot.numero_ot %}">
-  {% csrf_token %}
-  {{ form_estado_vehiculo.estado }}
-  <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
-</form>
-
-
-
-<form method="post" action="{% url 'ot_cambiar_estado' ot.numero_ot %}">
-  {% csrf_token %}
-  <select name="nuevo_estado" class="form-control">
-    {% for code,label in ESTADO_CHOICES %}
-      <option value="{{ code }}" {% if ot.estado == code %}selected{% endif %}>{{ label }}</option>
-    {% endfor %}
-  </select>
-
-  <textarea name="motivo" rows="2" class="form-control" placeholder="Motivo"></textarea>
-
-  <button type="submit" class="btn btn-primary">Cambiar estado</button>
-</form>
-
-
-<!----------------------------->
-<form method="post"
-      action="{% url 'ot_subir_adjuntos' numero_ot=ot.numero_ot %}"
-      enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ form_adjuntos.etiqueta }}
-  <input type="file" name="archivos" multiple accept=".jpg,.jpeg,.png,.pdf">
-  <button class="btn btn-sm btn-primary" type="submit">Subir</button>
-</form>
-
-<!-- Debug opcional -->
-<!-- DEBUG: adjuntos={{ adjuntos|length }} -->
-
-
-
-
-
-<!----------------------------->
-
-
-<!--------------SECICON MECANICO--------------->
-<h3>Acciones rápidas</h3>
-<div class="d-flex gap-2 flex-wrap">
-  <form method="post" action="{% url 'ot_mecanico_accion' numero_ot=ot.numero_ot accion='iniciar' %}">{% csrf_token %}
-    <button class="btn btn-sm btn-primary" {% if ot.estado != 'PENDIENTE' %}disabled{% endif %}>Iniciar</button>
-  </form>
-
-  <form method="post" action="{% url 'ot_mecanico_accion' numero_ot=ot.numero_ot accion='reanudar' %}">{% csrf_token %}
-    <button class="btn btn-sm btn-success" {% if ot.estado != 'PAUSADA' %}disabled{% endif %}>Reanudar</button>
-  </form>
-
-  <form method="post" action="{% url 'ot_mecanico_accion' numero_ot=ot.numero_ot accion='pausar' %}">{% csrf_token %}
-    <input name="motivo" placeholder="Motivo de pausa" style="width:220px;">
-    <button class="btn btn-sm btn-warning" {% if ot.estado != 'EN_PROCESO' %}disabled{% endif %}>Pausar</button>
-  </form>
-
-  <form method="post" action="{% url 'ot_mecanico_accion' numero_ot=ot.numero_ot accion='finalizar' %}">{% csrf_token %}
-    <button class="btn btn-sm btn-secondary" {% if ot.estado not in 'EN_PROCESO,PAUSADA' %}disabled{% endif %}>Finalizar</button>
-  </form>
-</div>
-
-
-
-
-
-
-
-<h3>Solicitar repuesto</h3>
-
-{% if puede_solicitar_repuesto %}
-  <form method="post" action="{% url 'ot_solicitar_repuesto' numero_ot=ot.numero_ot %}">
-  {% csrf_token %}
-  {{ form_solicitud_repuesto.repuesto }}
-  {{ form_solicitud_repuesto.cantidad }}
-  {{ form_solicitud_repuesto.nombre_proveedor }}
-  {{ form_solicitud_repuesto.observaciones }}
-  <button class="btn btn-primary btn-sm" type="submit">Solicitar</button>
-</form>
-{% endif %}
-
-
-{# === FORMULARIO PARA SOLICITAR REPUESTOS (mecánico asignado o supervisor) === #}
-{% if puede_solicitar_repuesto %}
-<section class="card">
-  <h3>Solicitar repuesto</h3>
-  <form method="post" action="{% url 'ot_solicitar_repuesto' numero_ot=ot.numero_ot %}">
-    {% csrf_token %}
-    {{ form_solic_repuesto.repuesto }}
-    {{ form_solic_repuesto.cantidad }}
-    {{ form_solic_repuesto.observacion }}
-    <button class="btn btn-primary btn-sm" type="submit">Solicitar</button>
-  </form>
-</section>
-{% endif %}
-
-{# === LISTA DE SOLICITUDES LOCALES (BD) visible para todos los que ven la OT) === #}
-<section class="card">
-  <h3>Solicitudes (local)</h3>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>ID</th><th>Repuesto</th><th>Cant.</th><th>Estado</th><th>Creada por</th><th>Fecha</th>
-        <th>Acción</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for s in solicitudes_locales %}
-      <tr>
-        <td>{{ s.id }}</td>
-        <td>{{ s.repuesto.nombre }}</td>
-        <td>{{ s.cantidad }}</td>
-        <td>{{ s.estado }}</td>
-        <td>{{ s.creado_por.nombre_completo }}</td>
-        <td>{{ s.fecha_creacion|date:"d-m-Y H:i" }}</td>
-        <td>
-          {% if soy_supervisor and s.id and s.estado != "RECIBIDA" %}
-            <a class="btn btn-sm"
-               href="{% url 'ot_confirmar_entrega' numero_ot=ot.numero_ot solicitud_id=s.id %}">
-              Confirmar entrega
-            </a>
-          {% else %}—{% endif %}
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="7">Sin solicitudes.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
-
-
-
-
-
-
-
-
-
-
-
-{% if soy_mecanico_asignado or soy_supervisor %}
-<h3>Observaciones del mecánico</h3>
-<textarea id="obs-mec" rows="5" class="form-control"
-          placeholder="Escribe tus observaciones técnicas...">{{ obs_mecanico_inicial }}</textarea>
-<p id="obs-status" style="font-size:12px;color:#666;margin-top:4px;">—</p>
-
-<script>
-(function(){
-  function getCookie(name){
-    const v = document.cookie.split(';').map(s=>s.trim());
-    for(const p of v){ if (p.startsWith(name + '=')) return decodeURIComponent(p.split('=')[1]); }
-    return '';
-  }
-  const ta = document.getElementById('obs-mec');
-  const status = document.getElementById('obs-status');
-  if(!ta) return;
-  let timer = null;
-
-  function saveNow(){
-    const form = new FormData();
-    form.append('texto', ta.value);
-    fetch("{% url 'ot_guardar_observaciones' numero_ot=ot.numero_ot %}", {
-      method: 'POST',
-      headers: {'X-CSRFToken': getCookie('csrftoken')},
-      body: form
-    }).then(r=>r.json()).then(j=>{
-      status.textContent = j.ok ? 'Guardado ✓' : 'Error al guardar';
-    }).catch(()=>{ status.textContent = 'Error de red'; });
-  }
-
-  function schedule(){
-    status.textContent = 'Guardando...';
-    clearTimeout(timer);
-    timer = setTimeout(saveNow, 1000); // 1s tras dejar de tipear
-  }
-
-  ta.addEventListener('input', schedule);
-  window.addEventListener('beforeunload', function(){
-    if(timer){ clearTimeout(timer); saveNow(); }
-  });
-})();
-</script>
-{% endif %}
-
-
-
-
-
-<h3>Tiempo en estado: <span id="timer-estado">–:–:–</span></h3>
-<script>
-(function(){
-  const start = new Date("{{ inicio_estado_iso }}");
-  const el = document.getElementById('timer-estado');
-  if(!el || isNaN(start)) return;
-  function two(n){ return (n<10?'0':'')+n; }
-  function tick(){
-    const diff = Date.now() - start.getTime();
-    if (diff < 0){ el.textContent = "00:00:00"; return; }
-    const s = Math.floor(diff/1000);
-    const h = Math.floor(s/3600);
-    const m = Math.floor((s%3600)/60);
-    const ss = s%60;
-    el.textContent = two(h)+":"+two(m)+":"+two(ss);
-  }
-  tick();
-  setInterval(tick, 1000);
-})();
-</script>
-
-
-{% if soy_mecanico_asignado or soy_supervisor %}
-<h3>Checklist</h3>
-<div class="card" style="padding:0.5rem;">
-  <table class="table">
-    <thead><tr><th>OK</th><th>Ítem</th><th>Obs / Resultado</th><th>Guardar</th></tr></thead>
-    <tbody>
-      {% for it in checklist %}
-      <tr>
-        <td>
-          <input type="checkbox" data-code="{{ it.code }}" class="chk-ok" {% if it.estado and it.estado|slice:":2" == "OK" %}checked{% endif %}>
-        </td>
-        <td>{{ it.texto }}</td>
-        <td>
-          <input type="text" class="chk-obs" data-code="{{ it.code }}"
-                 value="{% if it.estado and it.estado|slice:":2" != "OK" %}{{ it.estado|cut:'NO: ' }}{% endif %}">
-        </td>
-        <td>
-          <button type="button" class="btn btn-sm btn-primary btn-chk-guardar" data-code="{{ it.code }}">Guardar</button>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-<script>
-(function(){
-  function getCookie(name){
-    const v = document.cookie.split(';').map(s=>s.trim());
-    for(const p of v){ if (p.startsWith(name + '=')) return decodeURIComponent(p.split('=')[1]); }
-    return '';
-  }
-  function post(code, ok, obs){
-    const fd = new FormData();
-    fd.append('code', code);
-    fd.append('ok', ok ? '1' : '0');
-    fd.append('obs', obs || '');
-    return fetch("{% url 'ot_checklist_toggle' numero_ot=ot.numero_ot %}", {
-      method: 'POST', headers: {'X-CSRFToken': getCookie('csrftoken')}, body: fd
-    }).then(r=>r.json());
-  }
-  document.querySelectorAll('.btn-chk-guardar').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const code = btn.dataset.code;
-      const ok = document.querySelector('.chk-ok[data-code="'+code+'"]').checked;
-      const obs = document.querySelector('.chk-obs[data-code="'+code+'"]').value;
-      post(code, ok, obs).then(j=>{ if(!j.ok) alert('Error guardando'); });
-    });
-  });
-})();
-</script>
-{% endif %}
-
-
-
-
-
-<th>Acción</th>
-...
-<td>
-  {% if soy_supervisor and s.id and s.estado != "RECIBIDA" %}
-    <a class="btn btn-sm" href="{% url 'ot_confirmar_entrega' numero_ot=ot.numero_ot solicitud_id=s.id %}">Confirmar entrega</a>
-  {% else %}—{% endif %}
-</td>
-
-
-
-
-<!----------------------------->
-
-
-
-
-
-
-
-
-
-
-
-
-<hr/>
-
-<h3>Historial de estados</h3>
-<table class="table table-sm">
-  <thead>
-    <tr>
-      <th>Fecha</th>
-      <th>De</th>
-      <th>A</th>
-      <th>Realizado por </th>
-      <th>Motivo</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for log in logs %}
-    <tr>
-      <td>{{ log.fecha_cambio|date:"d-m-Y H:i" }}</td>
-      <td>{{ log.estado_anterior|default:"—" }}</td>
-      <td>{{ log.estado_nuevo }}</td>
-      <td>{{ log.cambiado_por.nombre_completo }}</td>
-      <td>{{ log.motivo_cambio|default:"—" }}</td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="5">Sin registros de cambios</td></tr>
-    {% endfor %}
-  </tbody>
-
-
-
-
-
-  <h3>Adjuntos</h3>
-
+<div class="tabs card">
+  <div class="tab-nav">
+    <button class="tab-btn" data-tab="rep" aria-selected="true">Repuestos</button>
+    <button class="tab-btn" data-tab="obs">Observaciones</button>
+    <button class="tab-btn" data-tab="chk">Checklist</button>
+    <button class="tab-btn" data-tab="adj">Adjuntos</button>
+    <button class="tab-btn" data-tab="hist">Historial</button>
+  </div>
+
+  <!-- Repuestos -->
+  <section id="tab-rep" class="tab-panel is-active">
+    {% if puede_solicitar_repuesto %}
+    <div class="section-title"><span class="dot"></span><h3>Solicitar repuesto</h3></div>
+    <form class="form-inline" method="post" action="{% url 'ot_solicitar_repuesto' numero_ot=ot.numero_ot %}">
+      {% csrf_token %}
+      <label class="form-label">Repuesto</label>
+      {{ form_solic_repuesto.repuesto }}
+      {{ form_solic_repuesto.cantidad }}
+      <button class="btn btn-primary btn-sm" type="submit">Solicitar</button>
+    </form>
+    {% endif %}
+
+    <div class="section-title" style="margin-top:14px"><span class="dot"></span><h3>Solicitudes (local)</h3></div>
+    <table class="table">
+      <thead>
+        <tr><th>ID</th><th>Repuesto</th><th>Cant.</th><th>Estado</th><th>Creada por</th><th>Fecha</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for s in solicitudes_locales %}
+          <tr>
+            <td>#{{ s.id }}</td>
+            <td>{{ s.repuesto }}</td>
+            <td>{{ s.cantidad_solicitada }}</td>
+            <td>
+              <span class="status-pill {% if s.estado == 'RECIBIDA' %}ok{% elif s.estado == 'APROBADA' %}warn{% endif %}">
+                {{ s.estado }}
+              </span>
+            </td>
+            <td>{{ s.creado_por.nombre_completo }}</td>
+            <td>{{ s.fecha_creacion|date:"d-m-Y H:i" }}</td>
+            <td style="text-align:right">
+              {% if soy_supervisor and s.id and s.estado != "RECIBIDA" %}
+                <a class="btn btn-sm" href="{% url 'ot_confirmar_entrega' numero_ot=ot.numero_ot solicitud_id=s.id %}">Confirmar</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">Sin solicitudes.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Observaciones -->
+  <section id="tab-obs" class="tab-panel">
+    {% if soy_mecanico_asignado or soy_supervisor %}
+      <div class="section-title"><span class="dot"></span><h3>Observaciones del mecánico</h3></div>
+      <form id="obs-form" method="post" action="{% url 'ot_guardar_observaciones' numero_ot=ot.numero_ot %}">
+        {% csrf_token %}
+        <textarea id="obs-text" class="note" name="obs" placeholder="Notas, hallazgos, diagnóstico...">{{ obs_mecanico_inicial }}</textarea>
+        <div class="note-toolbar">
+          <button class="btn btn-primary btn-sm" type="submit">Guardar</button>
+          <span id="obs-status" class="status-pill" style="display:none">Guardado</span>
+        </div>
+      </form>
+    {% else %}
+      <p class="muted">Solo el mecánico asignado o supervisor puede registrar observaciones.</p>
+    {% endif %}
+  </section>
+
+  <!-- Checklist -->
+  <section id="tab-chk" class="tab-panel">
+    {% if soy_mecanico_asignado or soy_supervisor %}
+      <div class="section-title"><span class="dot"></span>
+        <h3>Checklist (avance {{ chk_ok }}/{{ chk_total }} – {{ chk_pct }}%)</h3>
+      </div>
+      <div class="progress"><div class="progress-bar" style="width: {{ chk_pct }}%;"></div></div>
+
+      <div class="chk-grid" style="margin-top:.75rem">
+        {% for item in checklist %}
+          <form class="chk-item" method="post" action="{% url 'ot_checklist_toggle' numero_ot=ot.numero_ot %}">
+            {% csrf_token %}
+            <input type="hidden" name="code" value="{{ item.code }}">
+            <input type="hidden" name="estado" value="">
+            <div class="chk-text">{{ item.texto }}</div>
+            <div class="chk-actions">
+              <button type="button" class="btn btn-xs {% if item.estado == 'OK' %}btn-success is-selected{% endif %}" data-estado="OK">OK</button>
+              <button type="button" class="btn btn-xs {% if item.estado == 'PENDIENTE' %}btn-warning is-selected{% endif %}" data-estado="PENDIENTE">Pendiente</button>
+              <button type="button" class="btn btn-xs {% if item.estado == 'NO_APLICA' %}btn-muted is-selected{% endif %}" data-estado="NO_APLICA">N/A</button>
+            </div>
+          </form>
+        {% empty %}
+          <p class="muted">No hay ítems de checklist definidos.</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- Adjuntos -->
+  <section id="tab-adj" class="tab-panel">
+    <div class="section-title"><span class="dot"></span><h3>Adjuntar imágenes</h3></div>
+    <form method="post" action="{% url 'ot_subir_adjuntos' numero_ot=ot.numero_ot %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form_adjuntos.etiqueta }}
+      <input type="file" name="archivos" multiple accept=".jpg,.jpeg,.png,.pdf">
+      <button class="btn btn-primary btn-sm" type="submit">Subir</button>
+    </form>
+
+    <div class="section-title" style="margin-top:12px"><span class="dot"></span><h3>Archivos</h3></div>
+    <h3>Adjuntos</h3>
 {% if adjuntos %}
   <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px;">
     {% for a in adjuntos %}
@@ -409,8 +229,39 @@
 {% else %}
   <p>No hay adjuntos aún.</p>
 {% endif %}
+  </section>
 
-</table>
+  <!-- Historial -->
+  <section id="tab-hist" class="tab-panel">
+    <div class="section-title"><span class="dot"></span><h3>Historial de estados</h3></div>
+    <table class="table">
+      <thead>
+        <tr><th>Fecha</th><th>De</th><th>A</th><th>Realizado por</th><th>Motivo</th></tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+          <tr>
+            <td>{{ log.fecha_cambio|date:"d-m-Y H:i" }}</td>
+            <td>{{ log.estado_anterior|default:"—" }}</td>
+            <td>{{ log.estado_nuevo }}</td>
+            <td>{{ log.cambiado_por.nombre_completo }}</td>
+            <td>{{ log.motivo_cambio|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">Sin registros de cambios</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
 
 
+
+{% endblock %}
+
+
+
+{# Carga del JS específico de esta página #}
+{% block extra_js %}
+  <script src="{% static 'js/checklist.js' %}?v=20251112" defer></script>
 {% endblock %}

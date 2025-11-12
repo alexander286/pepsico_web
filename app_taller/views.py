@@ -1,5 +1,6 @@
 from django.shortcuts import render
-
+import time
+from django.db import OperationalError, transaction
 # Create your views here.
 from .utils import get_usuario_app_from_request, get_user_role_dominio
 
@@ -729,6 +730,17 @@ class OTDetalleView(DetailView):
         # empaquetar
         ctx["checklist"] = [{"code": c, "texto": txt, "estado": marcadas.get(c)} for (c, txt) in items]
 
+
+
+        items_qs = TareaOT.objects.filter(orden_trabajo=ot, titulo__startswith="CHK:")
+        total_items = items_qs.count()
+        ok_items = items_qs.filter(descripcion__iexact="OK").count()
+        ctx["chk_total"] = total_items
+        ctx["chk_ok"] = ok_items
+        ctx["chk_pct"] = round((ok_items * 100 / total_items), 1) if total_items else 0.0
+
+
+
         try:
             inv = InventarioClient()
             ctx["solicitudes_api"] = inv.listar_solicitudes_ot(ot.numero_ot)  # devuelve list[dict]
@@ -1131,57 +1143,47 @@ from .services.inventario_client import InventarioClient
 @login_required
 def ot_mecanico_accion(request, numero_ot, accion):
     ot = get_object_or_404(OrdenTrabajo, numero_ot=numero_ot)
-    user = get_usuario_app_from_request(request)
-    # Solo el mecánico asignado (o supervisores/admin) pueden operar:
-    role = get_user_role_dominio(request)
-    if not (user and (ot.mecanico_asignado_id == user.id or role in ("ADMIN", "SUPERVISOR", "JEFE_TALLER"))):
-        return HttpResponseForbidden("No tienes permiso para esta OT.")
+    u_app = get_usuario_app_from_request(request)
+    role = (get_user_role_dominio(request) or "").upper().strip()
+    es_supervisor = role in {"ADMIN", "SUPERVISOR", "JEFE", "JEFE_TALLER"} or request.user.is_staff or request.user.is_superuser
+    es_mec_asignado = bool(u_app and ot.mecanico_asignado_id == u_app.id)
+    if not (es_supervisor or es_mec_asignado):
+        return JsonResponse({"ok": False, "msg": "Sin permisos"}, status=403)
 
-    nuevo = None
-    motivo = (request.POST.get("motivo") or "").strip()
+    accion = (accion or "").upper().strip()
+    nuevo_estado = None
+    motivo = request.POST.get("motivo", "").strip()
 
-    if accion == "iniciar" or accion == "reanudar":
-        nuevo = EstadoOT.EN_PROCESO
-        ot.fecha_reanudacion = timezone.now()
-        ot.fecha_pausa = None
-    elif accion == "pausar":
-        nuevo = EstadoOT.PAUSADA
-        ot.fecha_pausa = timezone.now()
+    if accion == "INICIAR":
+        nuevo_estado = EstadoOT.EN_PROCESO
+    elif accion == "PAUSAR":
+        nuevo_estado = EstadoOT.PAUSADA
         if not motivo:
-            messages.error(request, "Debes indicar un motivo de pausa.")
-            return redirect("ot_detalle", numero_ot=numero_ot)
-    elif accion == "finalizar":
-        if ot.estado == EstadoOT.PAUSADA:
-            messages.error(request, "Reanuda la OT antes de finalizar.")
-            return redirect("ot_detalle", numero_ot=numero_ot)
-        nuevo = EstadoOT.FINALIZADA
-        ot.fecha_finalizacion = timezone.now()
-
+            return JsonResponse({"ok": False, "msg": "Debes indicar un motivo para pausar."}, status=400)
+    elif accion == "REANUDAR":
+        nuevo_estado = EstadoOT.EN_PROCESO
+    elif accion == "FINALIZAR":
+        nuevo_estado = EstadoOT.CERRADO
     else:
-        messages.error(request, "Acción inválida.")
-        return redirect("ot_detalle", numero_ot=numero_ot)
+        return JsonResponse({"ok": False, "msg": "Acción no reconocida."}, status=400)
 
-    permitidos = FLUJO_VALIDO.get(ot.estado, set())
-    if nuevo not in permitidos:
-        messages.error(request, f"Transición inválida desde {ot.estado} a {nuevo}.")
-        return redirect("ot_detalle", numero_ot=numero_ot)
-
-    with transaction.atomic():
-        anterior = ot.estado
-        ot.estado = nuevo
-        ot.save(update_fields=["estado","fecha_pausa","fecha_reanudacion","fecha_finalizacion"])
-
+    # Si ya está en ese estado, no duplicar
+    if _norm_estado(ot.estado) != _norm_estado(nuevo_estado):
+        ot.estado = nuevo_estado
+        ot.save(update_fields=["estado"])
         LogEstadoOT.objects.create(
             orden_trabajo=ot,
-            estado_anterior=anterior,
-            estado_nuevo=nuevo,
-            cambiado_por=user,
-            motivo_cambio=motivo
+            estado=nuevo_estado,
+            motivo=motivo if motivo else None,
+            usuario=request.user
         )
 
-    messages.success(request, f"OT {accion} → {nuevo}.")
-    return redirect("ot_detalle", numero_ot=numero_ot)
-
+    return JsonResponse({
+        "ok": True,
+        "estado": nuevo_estado,
+        "inicio_estado_iso": timezone.now().isoformat(),  # reinicia cronómetro en UI
+        "msg": f"OT {accion.title()}."
+    })
 
 
 
@@ -1410,35 +1412,52 @@ def ot_solicitar_repuesto(request, numero_ot):
     return redirect("ot_detalle", numero_ot=numero_ot)
 
 
-
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.db import transaction
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
 @require_POST
 @login_required
+@login_required
+@require_POST
 def ot_guardar_observaciones(request, numero_ot):
     ot = get_object_or_404(OrdenTrabajo, numero_ot=numero_ot)
-    user = get_usuario_app_from_request(request)
-    role = get_user_role_dominio(request)
+    u_app = get_usuario_app_from_request(request)
+    role = (get_user_role_dominio(request) or "").upper().strip()
+    es_supervisor = role in {"ADMIN", "SUPERVISOR", "JEFE", "JEFE_TALLER"} or request.user.is_staff or request.user.is_superuser
+    es_mec_asignado = bool(u_app and ot.mecanico_asignado_id == u_app.id)
 
-    # Mecánico asignado o supervisor/admin/jefe_taller
-    if not (user and (ot.mecanico_asignado_id == user.id or role in ("ADMIN","SUPERVISOR","JEFE_TALLER"))):
-        return JsonResponse({"ok": False, "error": "Sin permiso"}, status=403)
+    is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
 
-    texto = (request.POST.get("texto") or "").strip()
+    if not (es_supervisor or es_mec_asignado):
+        if is_ajax:
+            return JsonResponse({"ok": False, "msg": "Sin permisos"}, status=403)
+        messages.error(request, "Sin permisos")
+        return redirect("ot_detalle", numero_ot=numero_ot)
 
-    tarea, created = TareaOT.objects.get_or_create(
-        orden_trabajo=ot,
-        titulo="OBS_MECANICO",
-        defaults={"descripcion": texto, "mecanico_asignado": user}
+    txt = (request.POST.get("obs") or "").strip()
+    if not txt:
+        if is_ajax:
+            return JsonResponse({"ok": False, "msg": "Observación vacía"}, status=400)
+        messages.error(request, "Observación vacía")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    tarea, _ = TareaOT.objects.get_or_create(
+        orden_trabajo=ot, titulo="OBS_MECANICO",
+        defaults={"descripcion": txt, "mecanico_asignado": u_app}
     )
-    if not created:
-        tarea.descripcion = texto
-        if not tarea.mecanico_asignado_id:
-            tarea.mecanico_asignado = user
+    if tarea.descripcion != txt:
+        tarea.descripcion = txt
+        if u_app and tarea.mecanico_asignado_id != u_app.id:
+            tarea.mecanico_asignado = u_app
         tarea.save(update_fields=["descripcion", "mecanico_asignado"])
 
-    return JsonResponse({"ok": True})
+    if is_ajax:
+        return JsonResponse({"ok": True, "msg": "Observaciones guardadas"})
+    messages.success(request, "Observaciones guardadas")
+    return redirect("ot_detalle", numero_ot=numero_ot)
 
 
 
@@ -1467,29 +1486,55 @@ def _perm_mecanico_o_sup(request, ot):
 @login_required
 @require_POST
 def ot_checklist_toggle(request, numero_ot):
+  
     ot = get_object_or_404(OrdenTrabajo, numero_ot=numero_ot)
-    if not _perm_mecanico_o_sup(request, ot):
-        return JsonResponse({"ok": False, "error": "Sin permiso"}, status=403)
+    u = get_usuario_app_from_request(request)
+
+    role = (get_user_role_dominio(request) or "").upper().strip()
+    es_supervisor = role in {"ADMIN", "SUPERVISOR", "JEFE_TALLER"} or request.user.is_staff or request.user.is_superuser
+    es_mec = bool(u and ot.mecanico_asignado_id == u.id)
+    if not (es_supervisor or es_mec):
+        return HttpResponseBadRequest("Sin permisos")
 
     code = (request.POST.get("code") or "").strip()
-    estado = (request.POST.get("ok") or "0")  # "1"=OK, "0"=quitar
-    obs = (request.POST.get("obs") or "").strip()
+    estado = (request.POST.get("estado") or "").strip().upper()
+    if not code or estado not in {"OK", "PENDIENTE", "NO_APLICA"}:
+        return HttpResponseBadRequest("Parámetros inválidos")
 
     titulo = f"CHK:{code}"
-    tarea, created = TareaOT.objects.get_or_create(
-        orden_trabajo=ot,
-        titulo=titulo,
-        defaults={"descripcion": "OK" if estado == "1" else f"NO: {obs}" if obs else "NO"}
-    )
-    if not created:
-        if estado == "1":
-            tarea.descripcion = "OK"
-        else:
-            tarea.descripcion = f"NO: {obs}" if obs else "NO"
-        tarea.save(update_fields=["descripcion"])
 
-    return JsonResponse({"ok": True})
+    with transaction.atomic():
+        tarea, _ = TareaOT.objects.get_or_create(
+            orden_trabajo=ot,
+            titulo=titulo,
+            defaults={"descripcion": estado, "mecanico_asignado": u}
+        )
+        tarea.descripcion = estado
+        if u:
+            tarea.mecanico_asignado = u
+        tarea.save(update_fields=["descripcion", "mecanico_asignado"])
 
+    items = TareaOT.objects.filter(orden_trabajo=ot, titulo__startswith="CHK:")
+    total = items.count() or 1
+    ok = items.filter(descripcion__iexact="OK").count()
+    pct = round(ok * 100 / total, 1)
+
+  
+    for intento in range(5):
+        try:
+            with transaction.atomic():
+                tarea.descripcion = estado                  # "OK"/"PENDIENTE"/"NO_APLICA"
+                if tarea.mecanico_asignado_id is None and u:
+                    tarea.mecanico_asignado = u
+                tarea.save(update_fields=["descripcion", "mecanico_asignado"])
+            break
+        except OperationalError as e:
+            if "locked" in str(e).lower():
+                time.sleep(0.2 * (intento + 1))  # backoff
+                continue
+            raise
+
+    return JsonResponse({"ok": ok, "total": total, "pct": pct})
 
 
 
@@ -1730,3 +1775,142 @@ def ot_confirmar_entrega(request, numero_ot, solicitud_id):
         )
 
     return redirect("ot_detalle", numero_ot=numero_ot)
+
+
+
+
+
+
+
+
+
+
+# --- IMPORTS (arriba del archivo) ---
+from django.contrib import messages
+from django.db import IntegrityError, transaction
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+
+from .models import (
+    OrdenTrabajo, Repuesto, SolicitudRepuesto, MovimientoRepuesto,
+    EstadoSolicitud, TipoMovimiento
+)
+from .utils import get_usuario_app_from_request, get_user_role_dominio  # si lo tienes
+
+# === Crear solicitud de repuesto ===
+@login_required
+def ot_solicitar_repuesto(request, numero_ot):
+    ot = get_object_or_404(OrdenTrabajo, numero_ot=numero_ot)
+
+    # Permisos: mecánico asignado o supervisor
+    u = get_usuario_app_from_request(request)  # Usuario (modelo de tu app)
+    role = (get_user_role_dominio(request) or "").upper().strip()
+    es_supervisor = role in {"ADMIN", "SUPERVISOR", "JEFE", "JEFE_TALLER"} or request.user.is_staff or request.user.is_superuser
+    es_mec_asignado = bool(u and ot.mecanico_asignado_id == u.id)
+
+    if not (es_supervisor or es_mec_asignado):
+        messages.error(request, "No tienes permisos para solicitar repuestos en esta OT.")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    # Validación básica de POST
+    repuesto_id = request.POST.get("repuesto")
+    cantidad = request.POST.get("cantidad")
+    observacion = (request.POST.get("observacion") or "").strip()
+
+    try:
+        rep = Repuesto.objects.get(pk=repuesto_id)
+    except Repuesto.DoesNotExist:
+        messages.error(request, "Repuesto no válido.")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    try:
+        cantidad_int = int(cantidad)
+        if cantidad_int <= 0:
+            raise ValueError()
+    except Exception:
+        messages.error(request, "Cantidad inválida.")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    if not u:
+        messages.error(request, "No se pudo identificar al usuario de la aplicación (creado_por).")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    try:
+        with transaction.atomic():
+            # Tu modelo usa 'cantidad_solicitada' (no 'cantidad')
+            sol = SolicitudRepuesto.objects.create(
+                orden_trabajo=ot,
+                repuesto=rep,
+                cantidad_solicitada=cantidad_int,
+                urgente=False,  # o toma desde el form si lo tienes
+                estado=EstadoSolicitud.SOLICITADA,
+                numero_oc=None,
+                nombre_proveedor=None,
+                fecha_entrega_estimada=None,
+                creado_por=u,
+            )
+            # Si tu modelo tiene campo de observación (no existe en el que pegaste).
+            # Si tienes uno (p. ej. 'observacion' o 'observaciones'), setéalo aquí:
+            # sol.observacion = observacion
+            # sol.save(update_fields=["observacion"])
+
+        messages.success(request, f"Solicitud de repuesto creada (ID {sol.id}).")
+    except IntegrityError as e:
+        messages.error(request, f"No se pudo crear la solicitud (integridad de datos).")
+    except Exception as e:
+        messages.error(request, f"Error al crear la solicitud: {e!s}")
+
+    return redirect("ot_detalle", numero_ot=numero_ot)
+
+
+# === Confirmar entrega (supervisor) ===
+@login_required
+def ot_confirmar_entrega(request, numero_ot, solicitud_id):
+    ot = get_object_or_404(OrdenTrabajo, numero_ot=numero_ot)
+    sol = get_object_or_404(SolicitudRepuesto, pk=solicitud_id, orden_trabajo=ot)
+
+    # Permiso: supervisor (o staff)
+    u = get_usuario_app_from_request(request)
+    role = (get_user_role_dominio(request) or "").upper().strip()
+    es_supervisor = role in {"ADMIN", "SUPERVISOR", "JEFE", "JEFE_TALLER"} or request.user.is_staff or request.user.is_superuser
+    if not es_supervisor:
+        messages.error(request, "No tienes permiso para confirmar entregas.")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    if not u:
+        messages.error(request, "No se pudo identificar al usuario de la aplicación (movido_por).")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    # Campos obligatorios para MovimientoRepuesto según tu modelo
+    if ot.taller_id is None:
+        messages.error(request, "La OT no tiene 'taller' asociado. No se puede registrar el movimiento.")
+        return redirect("ot_detalle", numero_ot=numero_ot)
+
+    try:
+        with transaction.atomic():
+            # Registrar movimiento de salida
+            MovimientoRepuesto.objects.create(
+                taller=ot.taller,
+                repuesto=sol.repuesto,
+                orden_trabajo=ot,
+                tipo_movimiento=TipoMovimiento.SALIDA,  # <- usa tu enum/choices
+                cantidad=sol.cantidad_solicitada,
+                costo_unitario=None,  # opcional
+                motivo=f"Entrega solicitud #{sol.id}",
+                movido_por=u,
+                # fecha_movimiento se autogenera por auto_now_add
+            )
+
+            # Actualizar estado de la solicitud (p.ej. RECIBIDA)
+            sol.estado = EstadoSolicitud.RECIBIDA if hasattr(EstadoSolicitud, "RECIBIDA") else EstadoSolicitud.APROBADA
+            sol.save(update_fields=["estado", "fecha_actualizacion"])
+
+        messages.success(request, f"Entrega confirmada. Solicitud #{sol.id} actualizada.")
+    except IntegrityError:
+        messages.error(request, "No se pudo registrar el movimiento (integridad de datos).")
+    except Exception as e:
+        messages.error(request, f"Error al confirmar entrega: {e!s}")
+
+    return redirect("ot_detalle", numero_ot=numero_ot)
+
+
