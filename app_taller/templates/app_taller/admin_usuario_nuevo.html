@@ -4,55 +4,93 @@
 
 {% block content %}
 
-<h2>Registrar nuevo usuario</h2>
-<p class="muted">
-  Completa los datos del usuario. Se creará el registro interno y, si no existe,
-  una cuenta de acceso asociada al correo indicado.
-</p>
-
-<form method="post" class="card" style="max-width:640px;">
-  {% csrf_token %}
-
-  <div class="form-row">
-    <label>RUT</label>
-    <input type="text" name="rut" required placeholder="Ej: 11111111-1">
+<div class="page-header">
+  <div>
+    <h2>Nuevo usuario</h2>
+    <p class="page-subtitle">
+      Crea una nueva cuenta de usuario para el sistema. Se generará una contraseña temporal
+      y el usuario deberá cambiarla al iniciar sesión.
+    </p>
   </div>
 
-  <div class="form-row">
-    <label>Nombre completo</label>
-    <input type="text" name="nombre_completo" required placeholder="Nombre y apellido">
-  </div>
+  <a href="{% url 'admin_usuarios_panel' %}" class="btn btn-sm">
+    ← Volver al listado
+  </a>
+</div>
 
-  <div class="form-row">
-    <label>Correo electrónico</label>
-    <input type="email" name="email" required placeholder="usuario@empresa.cl">
-  </div>
+<section class="card" style="max-width:720px;">
+  <form method="post" novalidate>
+    {% csrf_token %}
 
-  <div class="form-row">
-    <label>Rol</label>
-    <select name="rol">
-      <option value="">Selecciona un rol</option>
-      {% for r in roles_disponibles %}
-        <option value="{{ r }}">{{ r }}</option>
-      {% endfor %}
-      
-    </select>
-  </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label>RUT</label>
+        <input type="text" name="rut" value="{{ rut|default:'' }}" placeholder="11.111.111-1" required>
+        <small class="text-muted">Usar formato chileno estándar.</small>
+      </div>
 
-  <div class="form-row">
-    <label>Taller</label>
-    <select name="taller">
-      <option value="">Sin taller asociado</option>
-      {% for t in talleres %}
-        <option value="{{ t.id }}">{{ t.nombre }}</option>
-      {% endfor %}
-    </select>
-  </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" name="email" value="{{ email|default:'' }}" placeholder="usuario@demo.cl" required>
+        <small class="text-muted">Se utilizará como usuario de acceso.</small>
+      </div>
+    </div>
 
-  <div style="margin-top:1rem; display:flex; gap:.5rem;">
-    <button type="submit" class="btn btn-primary">Guardar usuario</button>
-    <a href="{% url 'admin_usuarios_panel' %}" class="btn">Cancelar</a>
-  </div>
-</form>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label>Nombres</label>
+        <input type="text" name="nombres" value="{{ nombres|default:'' }}" required>
+      </div>
+
+      <div class="form-group">
+        <label>Apellidos</label>
+        <input type="text" name="apellidos" value="{{ apellidos|default:'' }}" required>
+      </div>
+    </div>
+
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label>Rol</label>
+        <select name="rol">
+          <option value="">Selecciona un rol</option>
+          {% for r in roles_disponibles %}
+            <option value="{{ r }}">{{ r }}</option>
+          {% endfor %}
+          
+        </select>
+        <small class="text-muted">Define los permisos principales del usuario.</small>
+      </div>
+
+      <div class="form-group">
+        <label>Taller (opcional)</label>
+        <select name="taller_id">
+          <option value="">— Sin asignar —</option>
+          {% for t in talleres %}
+            <option value="{{ t.id }}" {% if taller_id|stringformat:"s" == t.id|stringformat:"s" %}selected{% endif %}>
+              {{ t.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+        <small class="text-muted">Solo aplica para perfiles operativos (mecánico, supervisor, etc.).</small>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Teléfono (opcional)</label>
+      <input type="text" name="telefono" value="{{ telefono|default:'' }}" placeholder="+56 9 1234 5678">
+    </div>
+
+    <hr style="margin:1.25rem 0; opacity:.2;">
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        Crear usuario
+      </button>
+      <a href="{% url 'admin_usuario_nuevo' %}" class="btn btn-link">
+        Cancelar
+      </a>
+    </div>
+  </form>
+</section>
 
 {% endblock %}

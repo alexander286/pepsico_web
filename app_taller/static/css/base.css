@@ -372,3 +372,40 @@ textarea{min-height:42px}
   gap: .5rem;
   justify-content: flex-end;
 }
+
+
+
+
+
+
+
+
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+
+.form-group label {
+  font-size: .9rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+}
+
+.form-actions {
+  display: flex;
+  gap: .75rem;
+  justify-content: flex-end;
+  align-items: center;
+}
