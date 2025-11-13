@@ -4,6 +4,8 @@ from decimal import Decimal
 from django.db import OperationalError, transaction
 # Create your views here.
 from .utils import get_usuario_app_from_request, get_user_role_dominio
+from django.utils.crypto import get_random_string
+from .messages_catalog import MSG
 
 from django.utils import timezone
 from django.conf import settings
@@ -203,17 +205,292 @@ def _es_admin(request):
 
 @login_required
 def admin_usuario_toggle_activo(request, usuario_id):
-    if not _es_admin(request):
-        messages.error(request, "No tienes permisos de administrador.")
-        return redirect("dashboard")
-
     u = get_object_or_404(Usuario, pk=usuario_id)
     u.activo = not u.activo
     u.save(update_fields=["activo"])
 
-    estado_txt = "activado" if u.activo else "desactivado"
-    messages.success(request, f"Usuario {u.nombre_completo} ha sido {estado_txt}.")
+    if u.activo:
+        messages.success(
+            request,
+            f"La cuenta de {u.nombre_completo} ha sido **reactivada correctamente**. "
+            f"El usuario podrá volver a iniciar sesión con sus credenciales vigentes."
+        )
+    else:
+        messages.warning(
+            request,
+            f"La cuenta de {u.nombre_completo} ha sido **deshabilitada de forma temporal**. "
+            f"El usuario no podrá iniciar sesión hasta que la cuenta sea reactivada por un administrador."
+        )
+
+    return redirect("admin_usuarios_panel")
+
+
+
+@login_required
+def admin_usuario_reset_password(request, usuario_id):
+    if not _es_admin(request):
+        messages.error(request, "No tienes permisos de administrador.")
+        return redirect("dashboard")
+
+    usuario = get_object_or_404(Usuario, pk=usuario_id)
+
+    # Buscamos auth.User por email
+    auth_user = User.objects.filter(email=usuario.email).first()
+
+    if not auth_user:
+        # Si no existe, lo creamos con username basado en el email
+        username_base = usuario.email or f"user_{usuario.id}"
+        auth_user, created = User.objects.get_or_create(
+            username=username_base,
+            defaults={
+                "email": usuario.email or "",
+                "is_active": usuario.activo,
+            },
+        )
+    else:
+        # Si existe pero el email cambió, lo sincronizamos
+        if auth_user.email != usuario.email and usuario.email:
+            auth_user.email = usuario.email
+            auth_user.save(update_fields=["email"])
+
+    # Generamos clave temporal
+    # caracteres sin confusos (sin 0/O/l/I)
+    temp_pass = get_random_string(
+        10,
+        'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    )
+
+    auth_user.set_password(temp_pass)
+    auth_user.is_active = usuario.activo  # opcional, para alinear estados
+    auth_user.save()
+
+    messages.success(
+        request,
+        f"Contraseña temporal para {usuario.nombre_completo}: {temp_pass}. "
+        "Comunícala al usuario para que la cambie al iniciar sesión."
+    )
+
     return redirect("dashboard_admin")
+
+
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+
+# ...
+
+def es_admin_sistema(request):
+    """
+    True si es ADMIN del dominio o staff/superuser de Django.
+    """
+    rol = (get_user_role_dominio(request) or "").upper().strip()
+    if rol in {"ADMIN"}:
+        return True
+    if request.user.is_staff or request.user.is_superuser:
+        return True
+    return False
+
+
+
+
+
+
+
+from django.db.models import Q
+
+@login_required
+def admin_usuarios_panel(request):
+    if not es_admin_sistema(request):
+        messages.error(request, "No tienes permisos para acceder al panel de administración de usuarios.")
+        return redirect("dashboard")
+
+    q = (request.GET.get("q") or "").strip()
+    rol_filtro = (request.GET.get("rol") or "").strip()
+
+    usuarios = Usuario.objects.all().order_by("nombre_completo")
+
+    if q:
+        usuarios = usuarios.filter(
+            Q(nombre_completo__icontains=q)
+            | Q(email__icontains=q)
+            | Q(rut__icontains=q)
+        )
+
+    if rol_filtro:
+        usuarios = usuarios.filter(rol__iexact=rol_filtro)
+
+    # roles disponibles (para el select)
+    roles_disponibles = (
+        Usuario.objects.exclude(rol__isnull=True)
+                       .exclude(rol__exact="")
+                       .values_list("rol", flat=True)
+                       .distinct()
+    )
+
+    ctx = {
+        "usuario_app": get_usuario_app_from_request(request),
+        "usuarios": usuarios,
+        "f": {
+            "q": q,
+            "rol": rol_filtro,
+        },
+        "roles_disponibles": roles_disponibles,
+    }
+    return render(request, "app_taller/admin_usuarios.html", ctx)
+
+
+
+@login_required
+def admin_usuario_cambiar_rol(request, usuario_id):
+    if not es_admin_sistema(request):
+        messages.error(request, "No tienes permisos para modificar roles de usuario.")
+        return redirect("dashboard")
+
+    usuario = get_object_or_404(Usuario, pk=usuario_id)
+
+    if request.method == "POST":
+        nuevo_rol = (request.POST.get("rol") or "").strip().upper()
+        if not nuevo_rol:
+            messages.error(request, "Debes seleccionar un rol válido.")
+            return redirect("admin_usuarios_panel")
+
+        usuario.rol = nuevo_rol
+        usuario.save(update_fields=["rol"])
+
+        messages.success(
+            request,
+            f"El rol de {usuario.nombre_completo} ha sido actualizado a «{nuevo_rol}»."
+        )
+        return redirect("admin_usuarios_panel")
+
+    # Si alguien entra por GET, simplemente redirigimos
+    return redirect("admin_usuarios_panel")
+
+
+from django.contrib.auth.models import User
+from django.db.models import Q
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+
+# ... ya tienes esto arriba, solo asegúrate que User esté importado
+
+
+@login_required
+def admin_usuario_nuevo(request):
+    """
+    Permite al administrador registrar un nuevo usuario de dominio (Usuario)
+    y, si no existe, crearle también una cuenta de acceso (auth.User).
+    """
+    if not es_admin_sistema(request):
+        messages.error(request, "No tienes permisos para crear usuarios en el sistema.")
+        return redirect("dashboard")
+
+    if request.method == "POST":
+        rut = (request.POST.get("rut") or "").strip()
+        nombre = (request.POST.get("nombre_completo") or "").strip()
+        email = (request.POST.get("email") or "").strip().lower()
+        rol = (request.POST.get("rol") or "").strip().upper()
+        taller_id = (request.POST.get("taller") or "").strip()
+
+        # Validaciones simples
+        if not rut or not nombre or not email:
+            messages.error(request, "Debes completar al menos RUT, nombre completo y correo.")
+            return redirect("admin_usuario_nuevo")
+
+        if Usuario.objects.filter(email=email).exists():
+            messages.error(
+                request,
+                "Ya existe un usuario de dominio registrado con ese correo."
+            )
+            return redirect("admin_usuario_nuevo")
+
+        taller = None
+        if taller_id:
+            try:
+                taller = Taller.objects.get(pk=taller_id)
+            except Taller.DoesNotExist:
+                messages.error(request, "El taller seleccionado no existe.")
+                return redirect("admin_usuario_nuevo")
+
+        # Crear Usuario (dominio)
+       # Construimos solo con los campos que EXISTEN en el modelo Usuario
+        usuario_kwargs = {
+            "rut": rut,
+            "nombre_completo": nombre,
+            "email": email,
+            "rol": rol,
+            "activo": True,
+        }
+
+        usuario = Usuario.objects.create(**usuario_kwargs)
+
+
+        # Vincular / crear cuenta de login (auth.User) por correo
+        login_user = User.objects.filter(email=email).first()
+        temp_pass_msg = None
+
+        if not login_user:
+            base_username = email.split("@")[0] or rut.replace(".", "").replace("-", "")
+            username = base_username
+            i = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{i}"
+                i += 1
+
+            # Generar password temporal “suficiente” para demo
+            import secrets, string
+            alphabet = string.ascii_letters + string.digits
+            temp_pass = "".join(secrets.choice(alphabet) for _ in range(10))
+
+            login_user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=temp_pass,
+            )
+
+            # Si el rol es ADMIN, marcamos como staff (panel Django si se quiere)
+            if rol == "ADMIN":
+                login_user.is_staff = True
+                login_user.is_superuser = False  # opcional
+                login_user.save()
+
+            temp_pass_msg = f"Usuario de acceso: {username} · Clave temporal: {temp_pass}"
+        else:
+            temp_pass_msg = "Ya existía una cuenta de acceso asociada a este correo."
+
+        messages.success(
+            request,
+            f"Usuario «{usuario.nombre_completo}» creado correctamente. {temp_pass_msg}"
+        )
+        return redirect("admin_usuarios_panel")
+
+    # GET: mostrar formulario vacío
+    talleres = Taller.objects.all().order_by("nombre")
+    roles_disponibles = (
+        Usuario.objects.exclude(rol__isnull=True)
+                       .exclude(rol__exact="")
+                       .values_list("rol", flat=True)
+                       .distinct()
+    )
+
+    ctx = {
+        "usuario_app": get_usuario_app_from_request(request),
+        "talleres": talleres,
+        "roles_disponibles": roles_disponibles,
+    }
+    return render(request, "app_taller/admin_usuario_nuevo.html", ctx)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

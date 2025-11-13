@@ -1,0 +1,122 @@
+{% extends "app_taller/base.html" %}
+
+{% block title %}Administración de usuarios{% endblock %}
+
+{% block content %}
+
+<h2>Administración de usuarios</h2>
+<p class="muted">
+  Desde este panel puedes gestionar las cuentas del sistema: activar/desactivar, redefinir contraseñas y ajustar el rol de cada usuario.
+</p>
+
+
+<h2>Administración de usuarios</h2>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
+  <p class="muted" style="margin:0;">
+    Desde este panel puedes gestionar las cuentas del sistema.
+  </p>
+  <a href="{% url 'admin_usuario_nuevo' %}" class="btn btn-primary btn-sm">
+    ➕ Nuevo usuario
+  </a>
+</div>
+
+
+
+<form method="get" class="card" style="margin-bottom:1rem; display:flex; gap:.75rem; flex-wrap:wrap; align-items:flex-end;">
+  <div style="flex:1 1 220px;">
+    <label class="label-inline">Buscar</label>
+    <input type="text" name="q" value="{{ f.q }}" placeholder="Nombre, RUT o correo…">
+  </div>
+
+  <div style="flex:0 0 200px;">
+    <label class="label-inline">Rol</label>
+    <select name="rol">
+      <option value="">Todos</option>
+      {% for r in roles_disponibles %}
+        <option value="{{ r }}" {% if f.rol == r %}selected{% endif %}>{{ r }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div style="flex:0 0 auto;">
+    <button type="submit" class="btn btn-primary btn-sm">Aplicar filtros</button>
+  </div>
+
+  {# futuro: botón para importar usuarios desde Excel #}
+  <!--
+  <div style="flex:0 0 auto; margin-left:auto;">
+    <a href="#" class="btn btn-sm">Importar desde Excel</a>
+  </div>
+  -->
+</form>
+
+<div class="card" style="overflow:auto;">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>RUT</th>
+        <th>Nombre</th>
+        <th>Correo</th>
+        <th>Rol</th>
+        <th>Taller</th>
+        <th>Estado</th>
+        <th style="width:260px;">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td>{{ u.rut }}</td>
+        <td>{{ u.nombre_completo }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.rol|default:"—" }}</td>
+        <td>{{ u.taller.nombre|default:"—" }}</td>
+        <td>
+          {% if u.activo %}
+            <span class="badge state-ok">Activo</span>
+          {% else %}
+            <span class="badge state-pendiente">Inactivo</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex; gap:.35rem; flex-wrap:wrap;">
+            {# Activar / desactivar #}
+            <form method="post" action="{% url 'admin_usuario_toggle_activo' usuario_id=u.id %}">
+              {% csrf_token %}
+              {% if u.activo %}
+                <button class="btn btn-sm" type="submit">Desactivar</button>
+              {% else %}
+                <button class="btn btn-sm btn-primary" type="submit">Activar</button>
+              {% endif %}
+            </form>
+
+            {# Reset password #}
+            <form method="post" action="{% url 'admin_usuario_reset_password' usuario_id=u.id %}">
+              {% csrf_token %}
+              <button class="btn btn-sm" type="submit">Resetear clave</button>
+            </form>
+
+            {# Cambiar rol #}
+            <form method="post" action="{% url 'admin_usuario_cambiar_rol' usuario_id=u.id %}">
+              {% csrf_token %}
+              <select name="rol" style="padding:2px 4px; font-size:.8rem;">
+                {% for r in roles_disponibles %}
+                  <option value="{{ r }}" {% if u.rol == r %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-sm" type="submit">Guardar rol</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" style="text-align:center;">No se encontraron usuarios con los filtros aplicados.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

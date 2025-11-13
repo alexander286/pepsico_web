@@ -1,14 +1,164 @@
 {% extends "app_taller/base.html" %}
-{% load static %}
-<link rel="stylesheet" href="{% static 'css/base.css' %}">
-<script src="{% static 'js/main.js' %}" defer></script>
 
-
-{% block title %}Dashboard Admin{% endblock %}
 {% block content %}
-<h2>Bienvenido,
-    {{ usuario_app.nombre_completo|default:request.user.get_full_name|default:request.user.username }} 👋
-  </h2>
-  <h2>Dashboard · Admin</h2>
-  <p>Acceso total a módulos y reportes.</p>
+
+<h2>Hola, {{ usuario_app.nombre_completo|default:request.user.get_username }} 👋</h2>
+<h2>Dashboard · Administrador</h2>
+<p>Vista global del sistema y administración de cuentas.</p>
+
+<div class="kpi-grid">
+  <div class="kpi ok">
+    <div class="kpi-label">OTs total</div>
+    <div class="kpi-value">{{ kpi_ots.total }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">En proceso</div>
+    <div class="kpi-value">{{ kpi_ots.en_proceso }}</div>
+  </div>
+  <div class="kpi warn">
+    <div class="kpi-label">Pendientes</div>
+    <div class="kpi-value">{{ kpi_ots.pendientes }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Cerradas</div>
+    <div class="kpi-value">{{ kpi_ots.cerradas }}</div>
+  </div>
+  <div class="kpi danger">
+    <div class="kpi-label">Prioridad crítica</div>
+    <div class="kpi-value">{{ kpi_ots.criticas }}</div>
+  </div>
+</div>
+
+<h3 style="margin-top:1.5rem;">Usuarios del sistema</h3>
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Usuarios totales</div>
+    <div class="kpi-value">{{ kpi_users.total }}</div>
+  </div>
+  <div class="kpi ok">
+    <div class="kpi-label">Activos</div>
+    <div class="kpi-value">{{ kpi_users.activos }}</div>
+  </div>
+  <div class="kpi warn">
+    <div class="kpi-label">Inactivos</div>
+    <div class="kpi-value">{{ kpi_users.inactivos }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Mecánicos</div>
+    <div class="kpi-value">{{ kpi_users.mecanicos }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Supervisores</div>
+    <div class="kpi-value">{{ kpi_users.supervisores }}</div>
+  </div>
+</div>
+<h2>Administración de usuarios</h2>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
+  <p class="muted" style="margin:0;">
+    Desde este panel puedes gestionar las cuentas del sistema.
+  </p>
+  <a href="{% url 'admin_usuarios_panel' %}" class="btn btn-primary btn-sm">
+    👥 Gestion de Usuarios
+  </a>
+</div>
+
+
+<div class="grid-2" style="display:grid;grid-template-columns:1.3fr .7fr;gap:14px;margin-top:1.5rem;">
+  <section class="card">
+    <h3>Gestión de usuarios</h3>
+    <table class="ot-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>RUT</th>
+          <th>Rol</th>
+          <th>Email</th>
+          <th>Estado</th>
+          <th style="width:160px;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td>{{ u.nombre_completo }}</td>
+          <td>{{ u.rut }}</td>
+          <td>{{ u.rol }}</td>
+          <td>{{ u.email }}</td>
+          <td>
+              {% if u.activo %}
+                <span class="badge state-en_proceso">Activo</span>
+              {% else %}
+                <span class="badge state-pausada">Inactivo</span>
+              {% endif %}
+          </td>
+
+          <td>
+            <form method="post"
+                  action="{% url 'admin_usuario_toggle_activo' u.id %}"
+                  style="display:inline;">
+              {% csrf_token %}
+              <button class="btn btn-xs"
+                      type="submit">
+                {% if u.activo %}Desactivar{% else %}Activar{% endif %}
+              </button>
+            </form>
+
+            <form method="post"
+                  action="{% url 'admin_usuario_reset_password' u.id %}"
+                  style="display:inline;margin-left:4px;">
+              {% csrf_token %}
+              <button class="btn btn-xs" type="submit">
+                Resetear clave
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" style="text-align:center;">No hay usuarios creados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h3>Últimas OTs creadas</h3>
+    <table class="table-compact">
+      <thead>
+        <tr>
+          <th>N°</th><th>Patente</th><th>Estado</th><th>Prioridad</th><th>F. Apertura</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ot in ultimas_ots %}
+        <tr onclick="location.href='{% url 'ot_detalle' numero_ot=ot.numero_ot %}'" style="cursor:pointer;">
+          <td>#{{ ot.numero_ot }}</td>
+          <td>{{ ot.vehiculo.patente }}</td>
+          <td>{{ ot.get_estado_display }}</td>
+          <td>{{ ot.get_prioridad_display }}</td>
+          <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Sin registros.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <hr style="margin:1rem 0;opacity:.2;">
+
+    <h4>Herramientas de datos (propuesta)</h4>
+    <p style="font-size:.9rem;">
+      Desde este panel se podrá:
+    </p>
+    <ul style="font-size:.9rem;">
+      <li>Cargar usuarios o vehículos desde Excel.</li>
+      <li>Exportar OTs y movimientos de repuestos.</li>
+      <li>Disparar el módulo de limpieza de datos/ETL.</li>
+    </ul>
+    <p style="font-size:.8rem;color:#999;">
+      * Estas funciones se implementarán como parte del módulo de integración con Excel.
+    </p>
+  </section>
+</div>
+
 {% endblock %}

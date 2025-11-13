@@ -1,0 +1,58 @@
+{% extends "app_taller/base.html" %}
+
+{% block title %}Nuevo usuario{% endblock %}
+
+{% block content %}
+
+<h2>Registrar nuevo usuario</h2>
+<p class="muted">
+  Completa los datos del usuario. Se creará el registro interno y, si no existe,
+  una cuenta de acceso asociada al correo indicado.
+</p>
+
+<form method="post" class="card" style="max-width:640px;">
+  {% csrf_token %}
+
+  <div class="form-row">
+    <label>RUT</label>
+    <input type="text" name="rut" required placeholder="Ej: 11111111-1">
+  </div>
+
+  <div class="form-row">
+    <label>Nombre completo</label>
+    <input type="text" name="nombre_completo" required placeholder="Nombre y apellido">
+  </div>
+
+  <div class="form-row">
+    <label>Correo electrónico</label>
+    <input type="email" name="email" required placeholder="usuario@empresa.cl">
+  </div>
+
+  <div class="form-row">
+    <label>Rol</label>
+    <select name="rol">
+      <option value="">Selecciona un rol</option>
+      {% for r in roles_disponibles %}
+        <option value="{{ r }}">{{ r }}</option>
+      {% endfor %}
+      
+    </select>
+  </div>
+
+  <div class="form-row">
+    <label>Taller</label>
+    <select name="taller">
+      <option value="">Sin taller asociado</option>
+      {% for t in talleres %}
+        <option value="{{ t.id }}">{{ t.nombre }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div style="margin-top:1rem; display:flex; gap:.5rem;">
+    <button type="submit" class="btn btn-primary">Guardar usuario</button>
+    <a href="{% url 'admin_usuarios_panel' %}" class="btn">Cancelar</a>
+  </div>
+</form>
+
+{% endblock %}

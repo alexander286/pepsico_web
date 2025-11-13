@@ -89,3 +89,27 @@ document.addEventListener("click", (e)=>{
   });
   form.addEventListener("submit",(e)=>{ e.preventDefault(); doSave(); });
 })();
+
+
+
+
+// Cerrar mensajes al hacer clic en la X
+document.addEventListener("click", (ev) => {
+  const btn = ev.target.closest(".message-close");
+  if (!btn) return;
+  const box = btn.closest(".message-box");
+  if (box) box.remove();
+});
+
+// Auto-ocultar mensajes después de unos segundos
+document.addEventListener("DOMContentLoaded", () => {
+  const boxes = document.querySelectorAll(".message-box");
+  boxes.forEach((box) => {
+    setTimeout(() => {
+      if (box && box.parentNode) {
+        box.classList.add("message-fade-out");
+        setTimeout(() => box.remove(), 500);
+      }
+    }, 6000); // se oculta tras un rato
+  });
+});

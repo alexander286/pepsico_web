@@ -59,3 +59,39 @@ def get_user_role_dominio(request):
     """
     u = get_usuario_app_from_request(request)
     return (u.rol if u else "") or ""
+
+
+
+
+
+
+MSG = {
+    "pwd_reset_ok": (
+        "La contraseña temporal para {usuario} ha sido generada correctamente. "
+        "Proporcione esta credencial de manera segura al usuario para su próximo inicio de sesión."
+    ),
+
+    "user_activated": "La cuenta del usuario ha sido activada correctamente.",
+    "user_deactivated": (
+        "La cuenta del usuario ha sido deshabilitada. "
+        "El usuario no podrá acceder al sistema hasta ser reactivado."
+    ),
+
+    "no_permission": (
+        "No dispone de los permisos necesarios para realizar esta acción."
+    ),
+
+    "saved_ok": "El registro se ha guardado correctamente.",
+    "unexpected_error": (
+        "Se ha producido un error inesperado. "
+        "Vuelva a intentarlo o contacte al administrador si el problema persiste."
+    ),
+
+    "invalid_form": (
+        "La información ingresada no es válida. Revise los campos señalados."
+    ),
+
+    "access_denied": (
+        "Su sesión no cuenta con autorización para acceder a este recurso."
+    ),
+}

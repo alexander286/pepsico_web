@@ -9,8 +9,11 @@ from app_taller.views import (
     AdminDashboard, SupervisorDashboard, MecanicoDashboard, ChoferDashboard, IngresoNuevoView, 
     OTListView, OTDetalleView, ot_cambiar_estado, ot_asignar_mecanico, OTSupervisorListView,
     ot_cambiar_prioridad, vehiculo_cambiar_estado, ot_subir_adjuntos, OTMecanicoListView, ot_mecanico_accion, ot_entregar_repuesto
-    ,ot_solicitar_repuesto, ot_guardar_observaciones, ot_checklist_toggle, ot_confirmar_entrega, mecanico_dashboard
-
+    ,ot_solicitar_repuesto, ot_guardar_observaciones, ot_checklist_toggle, ot_confirmar_entrega, mecanico_dashboard,
+    admin_usuario_toggle_activo, admin_usuario_reset_password,
+    admin_usuarios_panel,
+    admin_usuario_cambiar_rol,
+    admin_usuario_nuevo,  
 )
 
 urlpatterns = [
@@ -25,6 +28,25 @@ urlpatterns = [
     path('dashboard', role_dashboard, name='dashboard'),
     # dashboards por rol (placeholders)
     path('dashboard/admin', AdminDashboard.as_view(), name='dashboard_admin'),
+        # Acciones de administración de usuarios (panel propio, distinto del /admin de Django)
+    path( "panel-admin/usuarios/<int:usuario_id>/toggle/",admin_usuario_toggle_activo, name="admin_usuario_toggle_activo",  ),
+    path("panel-admin/usuarios/<int:usuario_id>/reset-pass/",admin_usuario_reset_password,name="admin_usuario_reset_password", ),
+    path(
+    "panel-admin/usuarios/",
+    admin_usuarios_panel,
+    name="admin_usuarios_panel"
+    ),
+    path(
+        "panel-admin/usuarios/<int:usuario_id>/cambiar-rol/",
+        admin_usuario_cambiar_rol,
+        name="admin_usuario_cambiar_rol"
+    ),
+
+    path("panel-admin/usuarios/nuevo/", admin_usuario_nuevo, name="admin_usuario_nuevo"),  # 👈 NUEVO
+
+
+
+
     path('dashboard/supervisor', SupervisorDashboard.as_view(), name='dashboard_supervisor'),
     path('dashboard/mecanico', mecanico_dashboard, name='dashboard_mecanico'),
     path('dashboard/chofer', ChoferDashboard.as_view(), name='dashboard_chofer'),
