@@ -37,6 +37,12 @@ from django.utils.timezone import make_aware
 from datetime import datetime
 
 
+from django.views.generic import TemplateView
+from app_taller.models import OrdenTrabajo
+from .utils import get_usuario_app_from_request
+
+
+
 from .models import Usuario  # tu modelo con campo 'rol' y 'email'
 
 # ---------- Helpers ----------
@@ -114,12 +120,122 @@ def logout_view(request):
 
 
 # ---------- Dashboards por rol (placeholder UI) ----------
-class AdminDashboard(TemplateView):
-    template_name = 'app_taller/dashboard_admin.html'
+# views.py
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.models import User
+from django.db.models import Count, Q, Sum
+
+from .models import OrdenTrabajo, Usuario
+from .utils import get_usuario_app_from_request, get_user_role_dominio  # o donde lo tengas
+
+
+class AdminDashboard(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = "app_taller/dashboard_admin.html"
+
+    # Solo ADMIN / SUPERVISOR JEFE / staff
+    def test_func(self):
+        rol = (get_user_role_dominio(self.request) or "").upper().strip()
+        return (
+            rol in {"ADMIN", "JEFE", "JEFE_TALLER", "SUPERVISOR"}
+            or self.request.user.is_staff
+            or self.request.user.is_superuser
+        )
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["usuario_app"] = get_usuario_app_from_request(self.request)
+        request = self.request
+
+        u = get_usuario_app_from_request(request)
+        ctx["usuario_app"] = u
+
+        # === KPIs de OTs ===
+        qs_ot = OrdenTrabajo.objects.all()
+
+        ctx["kpi_ots"] = {
+            "total": qs_ot.count(),
+            "en_proceso": qs_ot.filter(estado="EN_PROCESO").count(),
+            "pendientes": qs_ot.filter(estado__in=["PENDIENTE", "ASIGNADA"]).count(),
+            "cerradas": qs_ot.filter(estado="CERRADA").count(),
+            "criticas": qs_ot.filter(prioridad="CRITICA").count()
+            if hasattr(OrdenTrabajo, "prioridad")
+            else 0,
+        }
+
+        # === KPIs de Usuarios ===
+        qs_usr = Usuario.objects.all()
+
+        ctx["kpi_users"] = {
+            "total": qs_usr.count(),
+            "activos": qs_usr.filter(activo=True).count(),
+            "inactivos": qs_usr.filter(activo=False).count(),
+            "mecanicos": qs_usr.filter(rol__iexact="MECANICO").count(),
+            "supervisores": qs_usr.filter(rol__iexact="SUPERVISOR").count(),
+        }
+
+        # Últimas OTs para tabla lateral
+        ctx["ultimas_ots"] = (
+            qs_ot.select_related("vehiculo", "taller")
+            .order_by("-fecha_apertura")[:8]
+        )
+
+        # Lista de usuarios para administrar
+        ctx["usuarios"] = qs_usr.order_by("-activo", "rol", "nombre_completo")
+
         return ctx
+    
+
+
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
+
+
+def _es_admin(request):
+    rol = (get_user_role_dominio(request) or "").upper().strip()
+    return (
+        rol in {"ADMIN", "JEFE", "JEFE_TALLER", "SUPERVISOR"}
+        or request.user.is_staff
+        or request.user.is_superuser
+    )
+
+
+@login_required
+def admin_usuario_toggle_activo(request, usuario_id):
+    if not _es_admin(request):
+        messages.error(request, "No tienes permisos de administrador.")
+        return redirect("dashboard")
+
+    u = get_object_or_404(Usuario, pk=usuario_id)
+    u.activo = not u.activo
+    u.save(update_fields=["activo"])
+
+    estado_txt = "activado" if u.activo else "desactivado"
+    messages.success(request, f"Usuario {u.nombre_completo} ha sido {estado_txt}.")
+    return redirect("dashboard_admin")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
 class SupervisorDashboard(TemplateView):
     template_name = 'app_taller/dashboard_supervisor.html'
@@ -162,12 +278,58 @@ class SupervisorDashboard(TemplateView):
         })
         return ctx
 
-class MecanicoDashboard(TemplateView):
-    template_name = 'app_taller/dashboard_mecanico.html'
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx["usuario_app"] = get_usuario_app_from_request(self.request)
-        return ctx
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.contrib import messages
+
+@login_required
+def mecanico_dashboard(request):
+    # 1) Resolver Usuario de dominio (tabla Usuario)
+    u = get_usuario_app_from_request(request)
+    print("DEBUG mecanico_dashboard usuario_app:", u)
+
+    if not u:
+        messages.warning(
+            request,
+            "No se pudo resolver tu usuario de taller. "
+            "Revisa la vinculación entre tu cuenta y el usuario de dominio."
+        )
+        qs = OrdenTrabajo.objects.none()
+    else:
+        # 🔍 Todas las OTs donde este usuario es mecánico asignado
+        # Usamos el email para evitar descalces de IDs
+        qs = OrdenTrabajo.objects.filter(mecanico_asignado__email=u.email)
+        print("DEBUG mecanico_dashboard qs count:", qs.count())
+        print(
+            "DEBUG mecanico_dashboard OTs:",
+            list(qs.values_list("numero_ot", "mecanico_asignado_id", "mecanico_asignado__email", "estado"))
+        )
+
+    # 2) KPIs
+    kpis = {
+        "total": qs.count(),
+        "en_proceso": qs.filter(estado="EN_PROCESO").count(),
+        "pendientes": qs.filter(estado__in=["PENDIENTE", "ASIGNADA"]).count(),
+        "cerradas": qs.filter(estado="CERRADA").count(),
+    }
+    print("DEBUG mecanico_dashboard kpis:", kpis)
+
+    # 3) Últimas OTs (10) para la tabla
+    mis_ots = qs.select_related("vehiculo", "taller").order_by("-fecha_apertura")[:10]
+
+    ctx = {
+        "usuario_app": u,
+        "kpis": kpis,
+        "mis_ots": mis_ots,
+    }
+    return render(request, "app_taller/dashboard_mecanico.html", ctx)
+
+
+
 
 class ChoferDashboard(TemplateView):
     template_name = 'app_taller/dashboard_chofer.html'
@@ -316,7 +478,11 @@ class IngresoNuevoView(FormView):
                 emergencia=False,
                 descripcion_problema=form.cleaned_data.get("observaciones", ""),
                 fecha_apertura=form.cleaned_data["fecha_hora_ingreso"],
+                total_repuestos=0,
+                total_mano_obra=0,
+                total_ot=0,
             )
+
 
             # --- guardar adjuntos si vinieron ---
             from pathlib import Path
@@ -1906,6 +2072,28 @@ def ot_confirmar_entrega(request, numero_ot, solicitud_id):
         pass
 
     mov.save()
+
+
+
+        # --- Recalcular totales cacheados de la OT ---
+    from django.db.models import F, Sum
+    from decimal import Decimal
+
+    agg = MovimientoRepuesto.objects.filter(
+        orden_trabajo=ot
+    ).aggregate(
+        total_repuestos=Sum(F("cantidad") * F("costo_unitario"))
+    )
+
+    total_repuestos = agg["total_repuestos"] or Decimal("0")
+    ot.total_repuestos = total_repuestos
+
+    # si luego quieres usar mano de obra, aquí la sumarías también
+    total_mano_obra = ot.total_mano_obra or Decimal("0")
+    ot.total_ot = total_repuestos + total_mano_obra
+
+    ot.save(update_fields=["total_repuestos", "total_ot"])
+
 
 
     return redirect("ot_detalle", numero_ot=numero_ot)

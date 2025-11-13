@@ -9,7 +9,7 @@ from app_taller.views import (
     AdminDashboard, SupervisorDashboard, MecanicoDashboard, ChoferDashboard, IngresoNuevoView, 
     OTListView, OTDetalleView, ot_cambiar_estado, ot_asignar_mecanico, OTSupervisorListView,
     ot_cambiar_prioridad, vehiculo_cambiar_estado, ot_subir_adjuntos, OTMecanicoListView, ot_mecanico_accion, ot_entregar_repuesto
-    ,ot_solicitar_repuesto, ot_guardar_observaciones, ot_checklist_toggle, ot_confirmar_entrega
+    ,ot_solicitar_repuesto, ot_guardar_observaciones, ot_checklist_toggle, ot_confirmar_entrega, mecanico_dashboard
 
 )
 
@@ -26,7 +26,7 @@ urlpatterns = [
     # dashboards por rol (placeholders)
     path('dashboard/admin', AdminDashboard.as_view(), name='dashboard_admin'),
     path('dashboard/supervisor', SupervisorDashboard.as_view(), name='dashboard_supervisor'),
-    path('dashboard/mecanico', MecanicoDashboard.as_view(), name='dashboard_mecanico'),
+    path('dashboard/mecanico', mecanico_dashboard, name='dashboard_mecanico'),
     path('dashboard/chofer', ChoferDashboard.as_view(), name='dashboard_chofer'),
 
 

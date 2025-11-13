@@ -1,27 +1,76 @@
 {% extends "app_taller/base.html" %}
+
 {% block content %}
-<h2>Mis Órdenes</h2>
+<h2>Mis Órdenes de Trabajo</h2>
+<p class="muted">Aquí ves solo las OTs donde tú eres el mecánico asignado.</p>
+
+<div class="ot-list-header">
+  <div class="ot-filters">
+    <form method="get" class="ot-filters">
+      <select name="estado">
+        <option value="">Estado (todos)</option>
+        {% for val,label in estados %}
+          <option value="{{ val }}" {% if f.estado == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="prioridad">
+        <option value="">Prioridad (todas)</option>
+        {% for val,label in prioridades %}
+          <option value="{{ val }}" {% if f.prioridad == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      <button class="btn-icon" type="submit">🔍 Filtrar</button>
+      <a class="btn-icon" href="{% url 'ot_mecanico_list' %}">🧽 Limpiar</a>
+    </form>
+  </div>
+
+  <a href="{% url 'dashboard_mecanico' %}" class="btn-icon">⬅ Volver al dashboard</a>
+</div>
+
 <div class="card" style="overflow:auto;">
-  <table class="table">
+  <table class="ot-table">
     <thead>
       <tr>
-        <th>N° OT</th><th>Patente</th><th>Estado</th><th>Prioridad</th><th>Taller</th><th>Acciones</th>
+        <th>N° OT</th>
+        <th>Patente</th>
+        <th>Estado</th>
+        <th>Prioridad</th>
+        <th>Taller</th>
+        <th>F. Apertura</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
-    {% for ot in ots %}
-      <tr>
-        <td>{{ ot.numero_ot }}</td>
+      {% for ot in ots %}
+      {% with estado_code=ot.estado|lower prio_code=ot.prioridad|lower %}
+      <tr class="tr-link" onclick="location.href='{% url 'ot_detalle' numero_ot=ot.numero_ot %}'">
+        <td><strong>#{{ ot.numero_ot }}</strong></td>
         <td>{{ ot.vehiculo.patente }}</td>
-        <td>{{ ot.get_estado_display }}</td>
-        <td>{{ ot.get_prioridad_display }}</td>
+        <td><span class="badge state-{{ estado_code|cut:'_' }}">{{ ot.get_estado_display }}</span></td>
+        <td><span class="badge prio-{{ prio_code|cut:'_' }}">{{ ot.get_prioridad_display }}</span></td>
         <td>{{ ot.taller.nombre }}</td>
-        <td><a class="btn btn-sm btn-primary" href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">Abrir</a></td>
+        <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
+        <td><a class="btn-icon" href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">👁 Ver</a></td>
       </tr>
-    {% empty %}
-      <tr><td colspan="6">No tienes OTs asignadas.</td></tr>
-    {% endfor %}
+      {% endwith %}
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center;">No tienes OTs con estos filtros.</td></tr>
+      {% endfor %}
     </tbody>
   </table>
 </div>
+
+{% if is_paginated %}
+  <nav style="margin-top:1rem;">
+    {% if page_obj.has_previous %}
+      <a class="btn" href="?page={{ page_obj.previous_page_number }}{% if qs %}&{{ qs }}{% endif %}">« Anterior</a>
+    {% endif %}
+    <span style="margin:0 0.75rem;">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a class="btn" href="?page={{ page_obj.next_page_number }}{% if qs %}&{{ qs }}{% endif %}">Siguiente »</a>
+    {% endif %}
+  </nav>
+{% endif %}
 {% endblock %}

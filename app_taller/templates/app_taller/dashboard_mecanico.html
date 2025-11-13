@@ -1,42 +1,76 @@
-
-
 {% extends "app_taller/base.html" %}
+
 {% block content %}
 
-<h2>Bienvenido,
-  {{ usuario_app.nombre_completo|default:request.user.get_full_name|default:request.user.username }}
-</h2>
+<h2>Hola, {{ usuario_app.nombre_completo|default:request.user.get_full_name }} 👋</h2>
+<p>Dashboard · Mecánico — aquí ves tus órdenes asignadas y accesos rápidos.</p>
 
-<h1>Mi trabajo</h1>
-
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;margin-bottom:1rem;">
-  <div class="card"><div class="card-body"><b>OTs abiertas</b><div style="font-size:28px">{{ kpi.abiertas }}</div></div></div>
-  <div class="card"><div class="card-body"><b>Pausadas</b><div style="font-size:28px">{{ kpi.pausadas }}</div></div></div>
-  <div class="card"><div class="card-body"><b>Ingresadas hoy</b><div style="font-size:28px">{{ kpi.hoy }}</div></div></div>
-  <div class="card"><div class="card-body"><b>Finalizadas hoy</b><div style="font-size:28px">{{ kpi.finalizadas_hoy }}</div></div></div>
+<div class="kpi-grid">
+  <div class="kpi ok">
+    <div class="kpi-label">Mis OTs asignadas</div>
+    <div class="kpi-value">{{ kpis.total }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">En proceso</div>
+    <div class="kpi-value">{{ kpis.en_proceso }}</div>
+  </div>
+  <div class="kpi warn">
+    <div class="kpi-label">Pendientes</div>
+    <div class="kpi-value">{{ kpis.pendientes }}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Cerradas</div>
+    <div class="kpi-value">{{ kpis.cerradas }}</div>
+  </div>
 </div>
 
-<div class="card" style="overflow:auto;">
-  <table class="table">
+<div style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+  <a href="{% url 'ot_mecanico_list' %}" class="btn btn-primary">
+    🧰 Ver mis OTs
+  </a>
+
+</div>
+
+<section class="card" style="margin-top:1.5rem;">
+  <h3>Mis últimas OTs</h3>
+  <table class="ot-table">
     <thead>
       <tr>
-        <th>N° OT</th><th>Patente</th><th>Estado</th><th>Prioridad</th><th>Taller</th><th>Acción</th>
+        <th>N° OT</th>
+        <th>Patente</th>
+        <th>Estado</th>
+        <th>Prioridad</th>
+        <th>Taller</th>
+        <th>F. Apertura</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
-      {% for ot in ots_asignadas %}
-      <tr>
-        <td>{{ ot.numero_ot }}</td>
+      {% for ot in mis_ots %}
+      {% with estado_code=ot.estado|lower prio_code=ot.prioridad|lower %}
+      <tr class="tr-link" onclick="location.href='{% url 'ot_detalle' numero_ot=ot.numero_ot %}'">
+        <td><strong>#{{ ot.numero_ot }}</strong></td>
         <td>{{ ot.vehiculo.patente }}</td>
-        <td>{{ ot.get_estado_display }}</td>
-        <td>{{ ot.get_prioridad_display }}</td>
+        <td>
+          <span class="badge state-{{ estado_code|cut:'_' }}">{{ ot.get_estado_display }}</span>
+        </td>
+        <td>
+          <span class="badge prio-{{ prio_code|cut:'_' }}">{{ ot.get_prioridad_display }}</span>
+        </td>
         <td>{{ ot.taller.nombre }}</td>
-        <td><a class="btn btn-sm btn-primary" href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">Abrir</a></td>
+        <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
+        <td><a class="btn-icon" href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">👁 Ver</a></td>
       </tr>
+      {% endwith %}
       {% empty %}
-      <tr><td colspan="6">No tienes OTs abiertas asignadas.</td></tr>
+      <tr>
+        <td colspan="7" style="text-align:center;">
+          No tienes OTs recientes asignadas.
+        </td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>
-</div>
+</section>
+
 {% endblock %}

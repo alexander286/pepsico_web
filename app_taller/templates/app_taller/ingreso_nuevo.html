@@ -1,63 +1,148 @@
 {% extends "app_taller/base.html" %}
-{% block title %}Nuevo ingreso{% endblock %}
+{% block title %}Nuevo ingreso · PepsiCo APT{% endblock %}
+
 {% block content %}
+<h2>Nuevo ingreso de vehículo</h2>
 
-<h1>Nuevo ingreso de vehículo</h1>
-
-<form method="post" novalidate>
-  {% csrf_token %}
-
-  <div class="mb-3">
-  <form method="post" enctype="multipart/form-data">
-  
-    {{ form.patente.label_tag }}
-    {{ form.patente }}
-    {{ form.patente.errors }}
-    <small class="text-muted">Formato CL: ABCD12, AB1234, AB12CD.</small>
+<section class="card ingreso-header">
+  <div>
+    <h3 style="margin-bottom:.25rem;">Datos del ingreso</h3>
+    <p class="muted">
+      Registra el ingreso del vehículo al taller. Los campos marcados con
+      <span class="tag-pill required">●</span> son obligatorios.
+    </p>
   </div>
-
-  <div class="mb-3">
-    {{ form.conductor_actual.label_tag }}
-    {{ form.conductor_actual }}
-    {{ form.conductor_actual.errors }}
-    <small class="text-muted">Opcional.</small>
+  <div class="ingreso-help">
+    <div class="tag-pill info">Paso 1</div>
+    <span>Identifica el vehículo y completa la información básica.</span>
   </div>
+</section>
 
-  <div class="mb-3">
-    {{ form.fecha_hora_ingreso.label_tag }}
-    {{ form.fecha_hora_ingreso }}
-    {{ form.fecha_hora_ingreso.errors }}
-  </div>
+<section class="card">
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
 
-  <div class="mb-3">
-    {{ form.taller.label_tag }}
-    {{ form.taller }}
-    {{ form.taller.errors }}
-  </div>
+    {# Errores generales del formulario #}
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {% for err in form.non_field_errors %}
+          <div>{{ err }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
 
-  <div class="mb-3">
-    {{ form.observaciones.label_tag }}
-    {{ form.observaciones }}
-    {{ form.observaciones.errors }}
-  </div>
+    <div class="form-grid-2">
 
-  
-   <div class="grid">
-    <label>Marca</label>
-    {{ form.marca }}
-    <label>Modelo</label>
-    {{ form.modelo }}
-    <label>Año modelo</label>
-    {{ form.anio_modelo }}
-  </div>
+      <div class="form-group">
+        <label for="{{ form.patente.id_for_label }}">
+          Patente <span class="tag-pill required">●</span>
+        </label>
+        {{ form.patente }}
+        <small class="muted">Formato CL: ABCD12, AB1234, AB12CD.</small>
+        {% if form.patente.errors %}
+          <div class="field-error">
+            {% for e in form.patente.errors %}{{ e }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
 
-  <div style="margin-top:.5rem;">
-    <label>Adjuntos (JPG/PNG/PDF, máx. 8MB)</label>
-    {{ form.adjuntos }}
-  </div>
+      <div class="form-group">
+        <label for="{{ form.conductor_actual.id_for_label }}">
+          Conductor actual
+        </label>
+        {{ form.conductor_actual }}
+        <small class="muted">Opcional.</small>
+        {% if form.conductor_actual.errors %}
+          <div class="field-error">
+            {% for e in form.conductor_actual.errors %}{{ e }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
 
-  <button type="submit" class="btn btn-primary">Guardar</button>
-  <a href="{% url 'dashboard' %}" class="btn btn-link">Cancelar</a>
-</form>
+      <div class="form-group">
+        <label for="{{ form.fecha_hora_ingreso.id_for_label }}">
+          Fecha y hora de ingreso <span class="tag-pill required">●</span>
+        </label>
+        {{ form.fecha_hora_ingreso }}
+        {% if form.fecha_hora_ingreso.errors %}
+          <div class="field-error">
+            {% for e in form.fecha_hora_ingreso.errors %}{{ e }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
 
+      <div class="form-group">
+        <label for="{{ form.taller.id_for_label }}">
+          Taller destino <span class="tag-pill required">●</span>
+        </label>
+        {{ form.taller }}
+        {% if form.taller.errors %}
+          <div class="field-error">
+            {% for e in form.taller.errors %}{{ e }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="{{ form.marca.id_for_label }}">Marca</label>
+        {{ form.marca }}
+        {% if form.marca.errors %}
+          <div class="field-error">
+            {% for e in form.marca.errors %}{{ e }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="{{ form.modelo.id_for_label }}">Modelo</label>
+        {{ form.modelo }}
+        {% if form.modelo.errors %}
+          <div class="field-error">
+            {% for e in form.modelo.errors %}{{ e }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="{{ form.anio_modelo.id_for_label }}">Año modelo</label>
+        {{ form.anio_modelo }}
+        {% if form.anio_modelo.errors %}
+          <div class="field-error">
+            {% for e in form.anio_modelo.errors %}{{ e }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group full-row">
+        <label for="{{ form.observaciones.id_for_label }}">
+          Observaciones
+        </label>
+        {{ form.observaciones }}
+        {% if form.observaciones.errors %}
+          <div class="field-error">
+            {% for e in form.observaciones.errors %}{{ e }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group full-row">
+        <label for="{{ form.adjuntos.id_for_label }}">
+          Adjuntos (JPG/PNG/PDF, máx. 8MB)
+        </label>
+        {{ form.adjuntos }}
+        {% if form.adjuntos.errors %}
+          <div class="field-error">
+            {% for e in form.adjuntos.errors %}{{ e }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+    </div>
+
+    <div class="form-actions">
+      <a href="{% url 'dashboard' %}" class="btn">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Guardar ingreso</button>
+    </div>
+  </form>
+</section>
 {% endblock %}

@@ -213,6 +213,14 @@ class OrdenTrabajo(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
+    from decimal import Decimal
+
+    total_repuestos  = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    total_mano_obra  = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    total_ot         = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+
+
+
     class Meta:
         db_table = "ordenes_trabajo"
         indexes = [
