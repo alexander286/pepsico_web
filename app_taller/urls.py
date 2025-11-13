@@ -42,7 +42,7 @@ urlpatterns = [
         name="admin_usuario_cambiar_rol"
     ),
 
-    path("panel-admin/usuarios/nuevo/", admin_usuario_nuevo, name="admin_usuario_nuevo"),  # 👈 NUEVO
+    path("panel-admin/usuarios/nuevo/", admin_usuario_nuevo, name="admin_usuario_nuevo"),  
 
 
 

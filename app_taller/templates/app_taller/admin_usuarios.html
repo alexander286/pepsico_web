@@ -4,51 +4,43 @@
 
 {% block content %}
 
-<h2>Administración de usuarios</h2>
-<p class="muted">
-  Desde este panel puedes gestionar las cuentas del sistema: activar/desactivar, redefinir contraseñas y ajustar el rol de cada usuario.
-</p>
+<div class="page-header">
+  <div>
+    <h2>Administración de usuarios</h2>
+    <p class="page-subtitle">
+      Desde este panel puedes gestionar las cuentas del sistema: activar/desactivar, redefinir contraseñas y ajustar el rol de cada usuario.
+    </p>
+  </div>
 
-
-<h2>Administración de usuarios</h2>
-
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
-  <p class="muted" style="margin:0;">
-    Desde este panel puedes gestionar las cuentas del sistema.
-  </p>
   <a href="{% url 'admin_usuario_nuevo' %}" class="btn btn-primary btn-sm">
     ➕ Nuevo usuario
   </a>
 </div>
 
+<form method="get" class="card admin-filters">
+  <div class="filter-row">
 
+    <div class="filter-field">
+      <label>Buscar</label>
+      <input type="text" name="q" value="{{ f.q }}" placeholder="Nombre, RUT o correo…">
+    </div>
 
-<form method="get" class="card" style="margin-bottom:1rem; display:flex; gap:.75rem; flex-wrap:wrap; align-items:flex-end;">
-  <div style="flex:1 1 220px;">
-    <label class="label-inline">Buscar</label>
-    <input type="text" name="q" value="{{ f.q }}" placeholder="Nombre, RUT o correo…">
-  </div>
-
-  <div style="flex:0 0 200px;">
-    <label class="label-inline">Rol</label>
-    <select name="rol">
-      <option value="">Todos</option>
-      {% for r in roles_disponibles %}
+    <div class="filter-field">
+      <label>Rol</label>
+      <select name="rol">
+        <option value="">Todos</option>
+        {% for r in roles_disponibles %}
         <option value="{{ r }}" {% if f.rol == r %}selected{% endif %}>{{ r }}</option>
-      {% endfor %}
-    </select>
-  </div>
+        {% endfor %}
+      </select>
+    </div>
 
-  <div style="flex:0 0 auto;">
-    <button type="submit" class="btn btn-primary btn-sm">Aplicar filtros</button>
-  </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary btn-sm">Aplicar filtros</button>
+      <a href="{% url 'admin_usuarios_panel' %}" class="btn btn-sm">Limpiar</a>
+    </div>
 
-  {# futuro: botón para importar usuarios desde Excel #}
-  <!--
-  <div style="flex:0 0 auto; margin-left:auto;">
-    <a href="#" class="btn btn-sm">Importar desde Excel</a>
   </div>
-  -->
 </form>
 
 <div class="card" style="overflow:auto;">
@@ -65,6 +57,7 @@
       </tr>
     </thead>
     <tbody>
+
       {% for u in usuarios %}
       <tr>
         <td>{{ u.rut }}</td>
@@ -72,26 +65,29 @@
         <td>{{ u.email }}</td>
         <td>{{ u.rol|default:"—" }}</td>
         <td>{{ u.taller.nombre|default:"—" }}</td>
+
         <td>
           {% if u.activo %}
-            <span class="badge state-ok">Activo</span>
+          <span class="badge state-ok">Activo</span>
           {% else %}
-            <span class="badge state-pendiente">Inactivo</span>
+          <span class="badge state-pendiente">Inactivo</span>
           {% endif %}
         </td>
+
         <td>
           <div style="display:flex; gap:.35rem; flex-wrap:wrap;">
-            {# Activar / desactivar #}
+
+            {# Activar / Desactivar #}
             <form method="post" action="{% url 'admin_usuario_toggle_activo' usuario_id=u.id %}">
               {% csrf_token %}
               {% if u.activo %}
-                <button class="btn btn-sm" type="submit">Desactivar</button>
+              <button class="btn btn-sm" type="submit">Desactivar</button>
               {% else %}
-                <button class="btn btn-sm btn-primary" type="submit">Activar</button>
+              <button class="btn btn-sm btn-primary" type="submit">Activar</button>
               {% endif %}
             </form>
 
-            {# Reset password #}
+            {# Resetear clave #}
             <form method="post" action="{% url 'admin_usuario_reset_password' usuario_id=u.id %}">
               {% csrf_token %}
               <button class="btn btn-sm" type="submit">Resetear clave</button>
@@ -102,11 +98,12 @@
               {% csrf_token %}
               <select name="rol" style="padding:2px 4px; font-size:.8rem;">
                 {% for r in roles_disponibles %}
-                  <option value="{{ r }}" {% if u.rol == r %}selected{% endif %}>{{ r }}</option>
+                <option value="{{ r }}" {% if u.rol == r %}selected{% endif %}>{{ r }}</option>
                 {% endfor %}
               </select>
               <button class="btn btn-sm" type="submit">Guardar rol</button>
             </form>
+
           </div>
         </td>
       </tr>
@@ -115,6 +112,7 @@
         <td colspan="7" style="text-align:center;">No se encontraron usuarios con los filtros aplicados.</td>
       </tr>
       {% endfor %}
+
     </tbody>
   </table>
 </div>

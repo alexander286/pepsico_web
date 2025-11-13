@@ -335,21 +335,40 @@ textarea{min-height:42px}
 }
 
 
-.message-box {
-  position: relative;
-  /* resto de estilos que ya tienes */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 1.3rem;
 }
 
-.message-close {
-  background: transparent;
-  border: none;
-  color: inherit;
-  font-size: 1.1rem;
-  cursor: pointer;
-  margin-left: 8px;
-  padding: 0 4px;
-  line-height: 1;
+.page-subtitle {
+  margin-top: .25rem;
+  font-size: .9rem;
+  color: #9ca3af;
 }
-.message-close:hover {
-  opacity: 0.7;
+
+.admin-filters {
+  margin-bottom: 1rem;
+  padding: .75rem 1rem;
+}
+
+.admin-filters .filter-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: .75rem;
+  align-items: flex-end;
+}
+
+.admin-filters .filter-field label {
+  font-size: .8rem;
+  color: #9ca3af;
+  display: block;
+  margin-bottom: .15rem;
+}
+
+.admin-filters .filter-actions {
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
 }
