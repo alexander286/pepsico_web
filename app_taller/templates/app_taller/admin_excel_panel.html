@@ -1,0 +1,181 @@
+{% extends "app_taller/base.html" %}
+
+{% block title %}Importar / Exportar datos{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h2>Importar / Exportar datos (Excel)</h2>
+    <p class="page-subtitle">
+      Desde este panel puedes descargar datos actuales y cargar archivos Excel
+      para actualizar la información del sistema (usuarios, vehículos, órdenes, repuestos, etc.).
+    </p>
+  </div>
+
+  <a href="{% url 'dashboard_admin' %}" class="btn btn-sm">
+    ← Volver al panel de administración
+  </a>
+</div>
+
+<div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+
+  {# ===================== USUARIOS ===================== #}
+  <section class="card">
+    <h3>Usuarios</h3>
+    <p class="muted">Altas y actualización masiva de cuentas de usuario.</p>
+
+    <div style="display:flex; gap:.5rem; margin-bottom:.75rem;">
+      <a href="{% url 'admin_excel_export_usuarios' %}" class="btn btn-sm btn-primary">
+        ⬇ Descargar Excel actual
+      </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'admin_excel_import_usuarios' %}">
+      {% csrf_token %}
+      <label class="label-inline">Importar desde Excel (.xlsx)</label>
+      <input type="file" name="archivo" accept=".xlsx" required>
+      <small class="text-muted">
+        Encabezados esperados: RUT, Nombre completo, Email, Rol, Taller, Teléfono, Activo.
+      </small>
+      <div style="margin-top:.75rem;">
+        <button type="submit" class="btn btn-sm">Subir y procesar</button>
+      </div>
+    </form>
+  </section>
+
+  {# ===================== VEHÍCULOS ===================== #}
+  <section class="card">
+    <h3>Vehículos</h3>
+    <p class="muted">Carga y mantenimiento de vehículos de la flota.</p>
+
+    <div style="display:flex; gap:.5rem; margin-bottom:.75rem;">
+      <a href="{% url 'admin_excel_export_vehiculos' %}" class="btn btn-sm btn-primary">
+        ⬇ Descargar Excel actual
+      </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'admin_excel_import_vehiculos' %}">
+      {% csrf_token %}
+      <label class="label-inline">Importar desde Excel (.xlsx)</label>
+      <input type="file" name="archivo" accept=".xlsx" required>
+      <small class="text-muted">
+        Encabezados esperados: Patente, Marca, Modelo, Año modelo, Estado (ACTIVO / FUERA_SERVICIO / BAJA).
+      </small>
+      <div style="margin-top:.75rem;">
+        <button type="submit" class="btn btn-sm">Subir y procesar</button>
+      </div>
+    </form>
+  </section>
+
+  {# ===================== ÓRDENES DE TRABAJO ===================== #}
+  <section class="card">
+    <h3>Órdenes de trabajo</h3>
+    <p class="muted">
+      Exportar historial de OT y, en una fase controlada, cargar OTs planificadas o históricas.
+    </p>
+
+    <div style="display:flex; gap:.5rem; margin-bottom:.75rem;">
+      <a href="{% url 'admin_excel_export_ots' %}" class="btn btn-sm btn-primary">
+        ⬇  Descargar Excel actual
+    </a>
+
+    </div>
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'admin_excel_import_ots' %}">
+      {% csrf_token %}
+      <label class="label-inline">Importar desde Excel (.xlsx)</label>
+      <input type="file" name="archivo" accept=".xlsx">
+      <small class="text-muted">
+        Uso avanzado. Encabezados sugeridos: N° OT, Patente, Estado, Prioridad, Mecánico (email),
+        Taller, Fecha apertura, Total repuestos, Total costo repuestos.
+      </small>
+      <div style="margin-top:.75rem;">
+        <button type="submit" class="btn btn-sm">Subir y procesar</button>
+      </div>
+    </form>
+  </section>
+
+  {# ===================== SOLICITUDES DE REPUESTO ===================== #}
+  <section class="card">
+    <h3>Solicitudes de repuesto</h3>
+    <p class="muted">
+      Exportar solicitudes para análisis de consumo, urgencias y tiempos de respuesta.
+    </p>
+
+    <div style="display:flex; gap:.5rem; margin-bottom:.75rem;">
+      <a href="{% url 'admin_excel_export_solicitudes' %}" class="btn btn-sm btn-primary">
+        ⬇ Descargar Excel actual
+      </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'admin_excel_import_solicitudes' %}">
+      {% csrf_token %}
+      <label class="label-inline">Importar desde Excel (.xlsx)</label>
+      <input type="file" name="archivo" accept=".xlsx">
+      <small class="text-muted">
+        Encabezados sugeridos: ID solicitud (opcional), N° OT, Repuesto (código),
+        Cantidad, Urgente (SI/NO), Estado, N° OC, Proveedor, Fecha entrega estimada.
+      </small>
+      <div style="margin-top:.75rem;">
+        <button type="submit" class="btn btn-sm">Subir y procesar</button>
+      </div>
+    </form>
+  </section>
+
+  {# ===================== REPUESTOS (CATÁLOGO) ===================== #}
+  <section class="card">
+    <h3>Catálogo de repuestos</h3>
+    <p class="muted">
+      Poblado y actualización del maestro de repuestos (códigos, nombres, costos, stock base).
+    </p>
+
+    <div style="display:flex; gap:.5rem; margin-bottom:.75rem;">
+      <a href="{% url 'admin_excel_export_repuestos' %}" class="btn btn-sm btn-primary">
+        ⬇ Descargar Excel actual
+      </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'admin_excel_import_repuestos' %}">
+      {% csrf_token %}
+      <label class="label-inline">Importar desde Excel (.xlsx)</label>
+      <input type="file" name="archivo" accept=".xlsx">
+      <small class="text-muted">
+        Encabezados esperados: Código, Nombre, Descripción, Costo unitario, Stock inicial, Unidad de medida, Activo.
+      </small>
+      <div style="margin-top:.75rem;">
+        <button type="submit" class="btn btn-sm">Subir y procesar</button>
+      </div>
+    </form>
+  </section>
+
+  {# ===================== MOVIMIENTOS DE REPUESTOS ===================== #}
+  <section class="card">
+    <h3>Movimientos de repuestos</h3>
+    <p class="muted">
+      Exportar movimientos para trazabilidad y análisis (entradas, salidas, ajustes).
+    </p>
+
+    <div style="display:flex; gap:.5rem; margin-bottom:.75rem;">
+      <a href="{% url 'admin_excel_export_movimientos' %}" class="btn btn-sm btn-primary">
+        ⬇ Descargar Excel actual
+      </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'admin_excel_import_movimientos' %}">
+      {% csrf_token %}
+      <label class="label-inline">Importar desde Excel (.xlsx)</label>
+      <input type="file" name="archivo" accept=".xlsx">
+      <small class="text-muted">
+        Encabezados sugeridos: Taller, Repuesto (código), N° OT (opcional),
+        Tipo movimiento (ENTRADA/SALIDA/AJUSTE), Cantidad, Costo unitario, Motivo, Fecha movimiento.
+      </small>
+      <div style="margin-top:.75rem;">
+        <button type="submit" class="btn btn-sm">Subir y procesar</button>
+      </div>
+    </form>
+  </section>
+
+</div>
+
+{% endblock %}

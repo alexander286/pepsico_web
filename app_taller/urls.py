@@ -1,4 +1,4 @@
-
+from . import views
 from django.contrib import admin
 from django.urls import path
 from django.shortcuts import redirect
@@ -13,17 +13,28 @@ from app_taller.views import (
     admin_usuario_toggle_activo, admin_usuario_reset_password,
     admin_usuarios_panel,
     admin_usuario_cambiar_rol,
-    admin_usuario_nuevo,  
+    admin_usuario_nuevo,  admin_excel_panel, admin_excel_export_usuarios, admin_excel_import_usuarios
+    , admin_excel_export_vehiculos, admin_excel_import_vehiculos, admin_excel_export_ots, admin_excel_import_ots,
+    admin_excel_export_solicitudes, admin_excel_import_solicitudes,
+    admin_excel_export_repuestos,admin_excel_import_repuestos, admin_excel_export_movimientos,admin_excel_import_movimientos,
+    password_change_forzada
+    
+    
+
+
 )
+
+
+
 
 urlpatterns = [
     path("", lambda r: redirect("home"), name="root"),
     path('admin/', admin.site.urls),
-
+    
     path('home', HomeView.as_view(), name='home'),
     path('login', LoginViewCustom.as_view(), name='login'),
     path('logout', logout_view, name='logout'),
-
+    
     # redirección por rol (genérica)
     path('dashboard', role_dashboard, name='dashboard'),
     # dashboards por rol (placeholders)
@@ -78,7 +89,33 @@ urlpatterns = [
 
    path("ots/<str:numero_ot>/checklist/toggle/", ot_checklist_toggle, name="ot_checklist_toggle"),
 
-    path("ots/<str:numero_ot>/solicitud/<int:solicitud_id>/confirmar-entrega/",ot_confirmar_entrega, name="ot_confirmar_entrega")
+    path("ots/<str:numero_ot>/solicitud/<int:solicitud_id>/confirmar-entrega/",ot_confirmar_entrega, name="ot_confirmar_entrega"),
 
-    
+        # Panel Excel admin
+    path("panel-admin/excel/", views.admin_excel_panel, name="admin_excel_panel"),
+    path("panel-admin/excel/usuarios/export/", views.admin_excel_export_usuarios, name="admin_excel_export_usuarios"),
+    path("panel-admin/excel/usuarios/import/", views.admin_excel_import_usuarios, name="admin_excel_import_usuarios"),
+    path("panel-admin/excel/vehiculos/export/", views.admin_excel_export_vehiculos, name="admin_excel_export_vehiculos"),
+    path("panel-admin/excel/vehiculos/import/", views.admin_excel_import_vehiculos, name="admin_excel_import_vehiculos"),
+
+
+    path("panel-admin/excel/ots/export/", admin_excel_export_ots, name="admin_excel_export_ots"),
+    path("panel-admin/excel/ots/import/", admin_excel_import_ots,name="admin_excel_import_ots"),
+
+    # Solicitudes de repuesto
+    path("panel-admin/excel/solicitudes/export/", admin_excel_export_solicitudes,name="admin_excel_export_solicitudes"),
+    path("panel-admin/excel/solicitudes/import/", admin_excel_import_solicitudes,name="admin_excel_import_solicitudes"),
+
+    # Catálogo de repuestos
+    path("panel-admin/excel/repuestos/export/", admin_excel_export_repuestos,name="admin_excel_export_repuestos"),
+    path("panel-admin/excel/repuestos/import/", admin_excel_import_repuestos,name="admin_excel_import_repuestos"),
+
+    # Movimientos de repuestos
+    path("panel-admin/excel/movimientos/export/", admin_excel_export_movimientos,name="admin_excel_export_movimientos"),
+    path("panel-admin/excel/movimientos/import/", admin_excel_import_movimientos,name="admin_excel_import_movimientos"),
+
+    path("mi-cuenta/cambiar-clave/", password_change_forzada, name="password_change_forzada"),
+
 ]
+
+

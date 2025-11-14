@@ -1,4 +1,5 @@
 from django.shortcuts import render
+
 import time
 from decimal import Decimal
 from django.db import OperationalError, transaction
@@ -228,7 +229,7 @@ def admin_usuario_toggle_activo(request, usuario_id):
 
 @login_required
 def admin_usuario_reset_password(request, usuario_id):
-    if not _es_admin(request):
+    if not _es_admin(request.user):
         messages.error(request, "No tienes permisos de administrador.")
         return redirect("dashboard")
 
@@ -263,6 +264,10 @@ def admin_usuario_reset_password(request, usuario_id):
     auth_user.set_password(temp_pass)
     auth_user.is_active = usuario.activo  # opcional, para alinear estados
     auth_user.save()
+
+
+    usuario.requiere_cambio_clave = True
+    usuario.save(update_fields=["requiere_cambio_clave"])
 
     messages.success(
         request,
@@ -2513,3 +2518,258 @@ def ot_confirmar_entrega(request, numero_ot, solicitud_id):
     return redirect("ot_detalle", numero_ot=numero_ot)
 
 
+###############
+###############
+###############
+##############
+
+
+# app_taller/views.py
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
+from .excel_utils import (
+    exportar_usuarios_xlsx,
+    exportar_vehiculos_xlsx,
+    importar_usuarios_xlsx,
+    importar_vehiculos_xlsx,
+)
+from .models import Usuario, Taller
+
+
+def _es_admin(user):
+    # reutiliza tu lógica: admin / supervisor global, etc
+    return user.is_staff or user.is_superuser
+
+
+@login_required
+@user_passes_test(_es_admin)
+def admin_excel_panel(request):
+    """
+    Pantalla principal de importación/exportación Excel.
+    """
+    return render(request, "app_taller/admin_excel_panel.html", {})
+
+
+@login_required
+@user_passes_test(_es_admin)
+def admin_excel_export_usuarios(request):
+    return exportar_usuarios_xlsx()
+
+
+@login_required
+@user_passes_test(_es_admin)
+def admin_excel_export_vehiculos(request):
+    return exportar_vehiculos_xlsx()
+
+
+@login_required
+@user_passes_test(_es_admin)
+def admin_excel_import_usuarios(request):
+    if request.method == "POST" and request.FILES.get("archivo"):
+        ok, errores = importar_usuarios_xlsx(request.FILES["archivo"])
+        if ok:
+            messages.success(request, f"Se procesaron {ok} usuarios desde el archivo.")
+        for e in errores:
+            messages.warning(request, e)
+        return redirect("admin_excel_panel")
+
+    messages.error(request, "No se recibió ningún archivo.")
+    return redirect("admin_excel_panel")
+
+
+@login_required
+@user_passes_test(_es_admin)
+def admin_excel_import_vehiculos(request):
+    if request.method == "POST" and request.FILES.get("archivo"):
+        ok, errores = importar_vehiculos_xlsx(request.FILES["archivo"])
+        if ok:
+            messages.success(request, f"Se procesaron {ok} vehículos desde el archivo.")
+        for e in errores:
+            messages.warning(request, e)
+        return redirect("admin_excel_panel")
+
+    messages.error(request, "No se recibió ningún archivo.")
+    return redirect("admin_excel_panel")
+
+
+
+from .excel_utils import (
+    exportar_usuarios_xlsx,
+    exportar_vehiculos_xlsx,
+    exportar_ots_xlsx,
+    exportar_repuestos_xlsx,
+    exportar_solicitudes_xlsx,
+    exportar_movimientos_xlsx,
+)
+
+
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone 
+
+
+
+def _solo_admin(request):
+    """Pequeño helper para validar que sea admin/staff."""
+    return request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
+
+
+@login_required
+def admin_excel_export_ots(request):
+    if not _solo_admin(request):
+        messages.error(request, "No tienes permisos para exportar información.")
+        return redirect("dashboard_admin")
+    return exportar_ots_xlsx()
+
+
+
+@login_required
+def admin_excel_import_ots(request):
+    if not _solo_admin(request):
+        messages.error(request, "No tienes permisos para importar información.")
+        return redirect("dashboard_admin")
+    if request.method == "POST":
+        # Aquí luego implementarás la lógica real de importación
+        messages.warning(
+            request,
+            "La importación de Órdenes de trabajo está en construcción. No se procesó el archivo."
+        )
+        return redirect("admin_excel_panel")
+    return redirect("admin_excel_panel")
+
+
+@login_required
+def admin_excel_export_solicitudes(request):
+    if not _solo_admin(request):
+        messages.error(request, "No tienes permisos para exportar información.")
+        return redirect("dashboard_admin")
+    return exportar_solicitudes_xlsx()
+
+
+@login_required
+def admin_excel_import_solicitudes(request):
+    if not _solo_admin(request):
+        messages.error(request, "No tienes permisos para importar información.")
+        return redirect("dashboard_admin")
+    if request.method == "POST":
+        messages.warning(
+            request,
+            "La importación de solicitudes de repuesto está en construcción. No se procesó el archivo."
+        )
+        return redirect("admin_excel_panel")
+    return redirect("admin_excel_panel")
+
+
+@login_required
+def admin_excel_export_repuestos(request):
+    if not _solo_admin(request):
+        messages.error(request, "No tienes permisos para exportar información.")
+        return redirect("dashboard_admin")
+    return exportar_repuestos_xlsx()
+
+
+
+@login_required
+def admin_excel_import_repuestos(request):
+    if not _solo_admin(request):
+        messages.error(request, "No tienes permisos para importar información.")
+        return redirect("dashboard_admin")
+    if request.method == "POST":
+        messages.warning(
+            request,
+            "La importación del catálogo de repuestos está en construcción. No se procesó el archivo."
+        )
+        return redirect("admin_excel_panel")
+    return redirect("admin_excel_panel")
+
+
+
+
+
+@login_required
+def admin_excel_export_movimientos(request):
+    if not _solo_admin(request):
+        messages.error(request, "No tienes permisos para exportar información.")
+        return redirect("dashboard_admin")
+    return  exportar_movimientos_xlsx()
+
+
+@login_required
+def admin_excel_import_movimientos(request):
+    if not _solo_admin(request):
+        messages.error(request, "No tienes permisos para importar información.")
+        return redirect("dashboard_admin")
+    if request.method == "POST":
+        messages.warning(
+            request,
+            "La importación de movimientos de repuestos está en construcción. No se procesó el archivo."
+        )
+        return redirect("admin_excel_panel")
+    return redirect("admin_excel_panel")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
+from django.shortcuts import render, redirect
+
+from .utils import get_usuario_app_from_request
+from .views import get_usuario_app_from_request
+
+
+@login_required
+def password_change_forzada(request):
+    """
+    Pantalla donde el usuario cambia su contraseña.
+    Se usa tanto cuando es obligatorio como cuando entra voluntariamente.
+    """
+    if request.method == "POST":
+        actual = request.POST.get("password_actual") or ""
+        nueva1 = request.POST.get("password_nueva") or ""
+        nueva2 = request.POST.get("password_nueva2") or ""
+
+        # Validar clave actual (la temporal)
+        if not request.user.check_password(actual):
+            messages.error(request, "La contraseña actual no es correcta.")
+        elif nueva1 != nueva2:
+            messages.error(request, "La nueva contraseña y la confirmación no coinciden.")
+        elif len(nueva1) < 8:
+            messages.error(request, "La nueva contraseña debe tener al menos 8 caracteres.")
+        elif actual == nueva1:
+            messages.error(request, "La nueva contraseña no puede ser igual a la actual.")
+        else:
+            # OK: guardar nueva clave
+            request.user.set_password(nueva1)
+            request.user.save()
+
+            # Apagar el flag requiere_cambio_clave
+            u = get_usuario_app_from_request(request)
+            if u:
+                u.requiere_cambio_clave = False
+                u.save(update_fields=["requiere_cambio_clave"])
+
+            # Mantener la sesión activa
+            update_session_auth_hash(request, request.user)
+
+            messages.success(request, "Tu contraseña ha sido actualizada correctamente.")
+            return redirect("dashboard")
+
+    return render(request, "app_taller/password_change_forzada.html", {})

@@ -100,9 +100,12 @@ class Usuario(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
+    requiere_cambio_clave = models.BooleanField(default=False)
+
+
     class Meta:
         db_table = "usuarios"
-        managed = False  # 👈 importante
+        managed = False  #  
         indexes = [
             models.Index(fields=["rol"]),
         ]
@@ -181,7 +184,7 @@ class ReservaVehiculo(models.Model):
 
 
 
-
+from django.utils import timezone 
 
 
 
