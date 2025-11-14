@@ -25,3 +25,4 @@ urllib3               2.5.0
 
 requests>=2.32.0
 pip install openpyxl
+pip install psycopg2-binary
