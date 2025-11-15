@@ -4,12 +4,12 @@
 <script src="{% static 'js/main.js' %}" defer></script>
 
 
-{% block title %}Dashboard Chofer{% endblock %}
+{% block title %}Dashboard Recepcionista{% endblock %}
 {% block content %}
 <h2>Bienvenido,
     {{ usuario_app.nombre_completo|default:request.user.get_full_name|default:request.user.username }} 👋
   </h2>
-  <h2>Dashboard · CHOFER</h2>
+  <h2>Dashboard · Recepcionista</h2>
   <a href="{% url 'ingreso_nuevo' %}" class="btn btn-primary">Nuevo ingreso</a>
   <p>Acceso total a módulos y reportes.</p>
 {% endblock %}
