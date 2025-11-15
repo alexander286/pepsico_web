@@ -1,4 +1,6 @@
 from django.shortcuts import render
+import secrets
+import string
 
 import time
 from decimal import Decimal
@@ -379,34 +381,35 @@ from django.contrib.auth.decorators import login_required
 
 # ... ya tienes esto arriba, solo asegúrate que User esté importado
 
-
 @login_required
 def admin_usuario_nuevo(request):
-    """
-    Permite al administrador registrar un nuevo usuario de dominio (Usuario)
-    y, si no existe, crearle también una cuenta de acceso (auth.User).
-    """
     if not es_admin_sistema(request):
         messages.error(request, "No tienes permisos para crear usuarios en el sistema.")
         return redirect("dashboard")
 
     if request.method == "POST":
         rut = (request.POST.get("rut") or "").strip()
-        nombre = (request.POST.get("nombre_completo") or "").strip()
+        nombres = (request.POST.get("nombres") or "").strip()
+        apellidos = (request.POST.get("apellidos") or "").strip()
+        nombre_completo = f"{nombres} {apellidos}".strip()
         email = (request.POST.get("email") or "").strip().lower()
         rol = (request.POST.get("rol") or "").strip().upper()
-        taller_id = (request.POST.get("taller") or "").strip()
+        taller_id = (request.POST.get("taller_id") or "").strip()
+        telefono = (request.POST.get("telefono") or "").strip()
 
-        # Validaciones simples
-        if not rut or not nombre or not email:
+        if not rut or not nombre_completo or not email:
             messages.error(request, "Debes completar al menos RUT, nombre completo y correo.")
             return redirect("admin_usuario_nuevo")
+        
+        if Usuario.objects.filter(rut=rut).exists():
+            messages.error(request, "Ya existe un usuario con ese RUT.")
+            return redirect("admin_usuario_nuevo")
+        
+
 
         if Usuario.objects.filter(email=email).exists():
-            messages.error(
-                request,
-                "Ya existe un usuario de dominio registrado con ese correo."
-            )
+
+            messages.error(request, "Ya existe un usuario de dominio registrado con ese correo.")
             return redirect("admin_usuario_nuevo")
 
         taller = None
@@ -417,20 +420,19 @@ def admin_usuario_nuevo(request):
                 messages.error(request, "El taller seleccionado no existe.")
                 return redirect("admin_usuario_nuevo")
 
-        # Crear Usuario (dominio)
-       # Construimos solo con los campos que EXISTEN en el modelo Usuario
         usuario_kwargs = {
             "rut": rut,
-            "nombre_completo": nombre,
+            "nombre_completo": nombre_completo,
             "email": email,
             "rol": rol,
+            "telefono": telefono,
             "activo": True,
         }
+        if taller:
+            usuario_kwargs["taller"] = taller
 
         usuario = Usuario.objects.create(**usuario_kwargs)
 
-
-        # Vincular / crear cuenta de login (auth.User) por correo
         login_user = User.objects.filter(email=email).first()
         temp_pass_msg = None
 
@@ -442,10 +444,7 @@ def admin_usuario_nuevo(request):
                 username = f"{base_username}{i}"
                 i += 1
 
-            # Generar password temporal “suficiente” para demo
-            import secrets, string
-            alphabet = string.ascii_letters + string.digits
-            temp_pass = "".join(secrets.choice(alphabet) for _ in range(10))
+            temp_pass = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
 
             login_user = User.objects.create_user(
                 username=username,
@@ -453,10 +452,9 @@ def admin_usuario_nuevo(request):
                 password=temp_pass,
             )
 
-            # Si el rol es ADMIN, marcamos como staff (panel Django si se quiere)
             if rol == "ADMIN":
                 login_user.is_staff = True
-                login_user.is_superuser = False  # opcional
+                login_user.is_superuser = False
                 login_user.save()
 
             temp_pass_msg = f"Usuario de acceso: {username} · Clave temporal: {temp_pass}"
@@ -469,21 +467,15 @@ def admin_usuario_nuevo(request):
         )
         return redirect("admin_usuarios_panel")
 
-    # GET: mostrar formulario vacío
+    # GET: Mostrar formulario
     talleres = Taller.objects.all().order_by("nombre")
-    roles_disponibles = (
-        Usuario.objects.exclude(rol__isnull=True)
-                       .exclude(rol__exact="")
-                       .values_list("rol", flat=True)
-                       .distinct()
-    )
+    roles_disponibles = ["ADMIN", "MECANICO", "RECEPCION/CHOFER", "SUPERVISOR"]
 
-    ctx = {
+    return render(request, "app_taller/admin_usuario_nuevo.html", {
         "usuario_app": get_usuario_app_from_request(request),
         "talleres": talleres,
         "roles_disponibles": roles_disponibles,
-    }
-    return render(request, "app_taller/admin_usuario_nuevo.html", ctx)
+    })
 
 
 

@@ -99,13 +99,13 @@ class Usuario(models.Model):
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
-
+    taller = models.ForeignKey("Taller", null=True, blank=True, on_delete=models.SET_NULL)
     requiere_cambio_clave = models.BooleanField(default=False)
 
 
     class Meta:
         db_table = "usuarios"
-        managed = False  #  
+        managed = True  #  
         indexes = [
             models.Index(fields=["rol"]),
         ]
