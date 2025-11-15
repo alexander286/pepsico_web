@@ -8,38 +8,34 @@ from .etl_utils import normalizar_rut, normalizar_nombre, normalizar_email
 
 from .models import Usuario, Vehiculo, Taller, OrdenTrabajo,SolicitudRepuesto, Repuesto,MovimientoRepuesto 
 
-
+from openpyxl import Workbook
+from django.http import HttpResponse
+from io import BytesIO
+from app_taller.models import Usuario
 # =======================
 # EXPORTAR A EXCEL
 # =======================
-def exportar_usuarios_xlsx() -> HttpResponse:
+def exportar_usuarios_xlsx():
     wb = Workbook()
     ws = wb.active
     ws.title = "Usuarios"
 
     # Encabezados
-    headers = ["RUT", "Nombre completo", "Email", "Rol", "Taller", "Teléfono", "Activo"]
-    ws.append(headers)
+    ws.append(["RUT", "Nombre", "Email", "Rol", "Teléfono", "Activo"])
 
-    # 👇 SIN select_related("taller") para que no falle si no existe ese FK
-    qs = Usuario.objects.all().order_by("rut")
+    for u in Usuario.objects.all():
+        ws.append([u.rut, u.nombre_completo, u.email, u.rol, u.telefono, "Sí" if u.activo else "No"])
 
-    for u in qs:
-        # intentar obtener nombre de taller solo si existe el atributo
-        taller_nombre = ""
-        if hasattr(u, "taller") and getattr(u, "taller_id", None):
-            # si en el futuro agregas FK taller, esto empezará a usarse solo
-            taller_nombre = getattr(u.taller, "nombre", "") or ""
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
 
-        ws.append([
-            u.rut or "",
-            u.nombre_completo or "",
-            u.email or "",
-            u.rol or "",
-            taller_nombre,
-            getattr(u, "telefono", "") or "",
-            "SI" if u.activo else "NO",
-        ])
+    response = HttpResponse(
+        output,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = 'attachment; filename=usuarios.xlsx'
+    return response
 
     # Guardar en memoria
     buffer = io.BytesIO()
@@ -217,77 +213,45 @@ def exportar_vehiculos_xlsx() -> HttpResponse:
 # IMPORTAR DESDE EXCEL
 # =======================
 
-def importar_usuarios_xlsx(uploaded_file) -> Tuple[int, List[str]]:
-    """
-    Lee un .xlsx de usuarios y crea/actualiza registros.
-    Retorna (num_procesados_ok, lista_errores)
-    """
-    wb = load_workbook(uploaded_file, data_only=True)
+import openpyxl
+
+def importar_usuarios_xlsx(file):
+    errores = []
+    wb = openpyxl.load_workbook(file)
     ws = wb.active
 
-    errores: List[str] = []
-    ok = 0
+    headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
 
-    rut = normalizar_rut(row["RUT"])
-    nombre = normalizar_nombre(row["Nombre completo"])
-    email = normalizar_email(row["Email"])
+    for i, row_cells in enumerate(ws.iter_rows(min_row=2), start=2):
+        row = {headers[j]: cell.value for j, cell in enumerate(row_cells) if j < len(headers)}
 
+        try:
+            rut = normalizar_rut(row.get("RUT"))
+            email = (row.get("Email") or "").strip().lower()
+            nombre = row.get("Nombre completo") or ""
+            rol = row.get("Rol") or ""
+            telefono = row.get("Teléfono") or ""
+            activo = str(row.get("Activo") or "").strip().lower() == "sí"
 
-    # Se espera primera fila como encabezados
-    first = True
-    for row_idx, row in enumerate(ws.iter_rows(values_only=True), start=1):
-        if first:
-            first = False
-            continue
+            if not rut or not email:
+                errores.append(f"Fila {i}: RUT o Email faltante")
+                continue
 
-        rut, nombre, email, rol, taller_nombre, telefono, activo_txt = (row + (None,) * 7)[:7]
+            usuario, created = Usuario.objects.update_or_create(
+                rut=rut,
+                defaults={
+                    "email": email,
+                    "nombre_completo": nombre,
+                    "rol": rol,
+                    "telefono": telefono,
+                    "activo": activo,
+                }
+            )
+        except Exception as e:
+            errores.append(f"Fila {i}: {str(e)}")
 
-        if not rut and not email:
-            # fila vacía
-            continue
+    return True, errores
 
-        if not email:
-            errores.append(f"Fila {row_idx}: sin email (obligatorio).")
-            continue
-
-        activo = True
-        if isinstance(activo_txt, str):
-            activo = activo_txt.strip().upper() in {"SI", "S", "TRUE", "1"}
-
-        # buscar taller si viene
-        taller_obj = None
-        if taller_nombre:
-            taller_obj = Taller.objects.filter(nombre__iexact=str(taller_nombre).strip()).first()
-
-        # upsert por email
-        usuario, created = Usuario.objects.get_or_create(
-            email=str(email).strip(),
-            defaults={
-                "rut": (rut or "").strip(),
-                "nombre_completo": (nombre or "").strip(),
-                "rol": (rol or "").strip().upper(),
-                "telefono": (telefono or "").strip() if telefono else "",
-                "activo": activo,
-            },
-        )
-
-        if not created:
-            usuario.rut = (rut or usuario.rut or "").strip()
-            if nombre:
-                usuario.nombre_completo = str(nombre).strip()
-            if rol:
-                usuario.rol = str(rol).strip().upper()
-            if telefono:
-                usuario.telefono = str(telefono).strip()
-            usuario.activo = activo
-
-        if taller_obj and hasattr(usuario, "taller"):
-            usuario.taller = taller_obj
-
-        usuario.save()
-        ok += 1
-
-    return ok, errores
 
 from .etl_utils import normalizar_patente
 

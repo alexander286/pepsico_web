@@ -2552,10 +2552,24 @@ def admin_excel_panel(request):
     return render(request, "app_taller/admin_excel_panel.html", {})
 
 
+from django.http import HttpResponse
+from app_taller.excel_utils import exportar_usuarios_xlsx
+
 @login_required
-@user_passes_test(_es_admin)
 def admin_excel_export_usuarios(request):
-    return exportar_usuarios_xlsx()
+    if not _es_admin(request.user):
+        return redirect("dashboard")
+
+    # Llama a la función que genera el archivo y asegúrate de que retorne un HttpResponse
+    response = exportar_usuarios_xlsx()
+    
+    if not isinstance(response, HttpResponse):
+        # Algo falló internamente, responde de forma controlada
+        messages.error(request, "Error al generar el archivo Excel de usuarios.")
+        return redirect("admin_excel_panel")
+    
+    return response
+
 
 
 @login_required

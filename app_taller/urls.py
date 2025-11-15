@@ -17,7 +17,7 @@ from app_taller.views import (
     , admin_excel_export_vehiculos, admin_excel_import_vehiculos, admin_excel_export_ots, admin_excel_import_ots,
     admin_excel_export_solicitudes, admin_excel_import_solicitudes,
     admin_excel_export_repuestos,admin_excel_import_repuestos, admin_excel_export_movimientos,admin_excel_import_movimientos,
-    password_change_forzada
+    password_change_forzada, admin_excel_export_usuarios
     
     
 
