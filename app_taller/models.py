@@ -323,6 +323,10 @@ class Repuesto(models.Model):
     informacion_proveedor = models.TextField(blank=True, null=True)
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    categoria = models.CharField(max_length=100, blank=True, null=True)
+    stock_actual = models.PositiveIntegerField(default=0)
+
+    
 
     class Meta:
         db_table = "repuestos"
@@ -332,6 +336,12 @@ class Repuesto(models.Model):
 
     def __str__(self):
         return f"{self.sku} - {self.nombre}"
+    
+    
+    
+
+
+
 
 
 class Inventario(models.Model):
@@ -361,9 +371,12 @@ class MovimientoRepuesto(models.Model):
     cantidad = models.IntegerField()
     costo_unitario = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     motivo = models.TextField(blank=True, null=True)
-    movido_por = models.ForeignKey(Usuario, on_delete=models.PROTECT)
+    movido_por = models.ForeignKey(Usuario, on_delete=models.PROTECT, related_name="movimientos_realizados")
     fecha_movimiento = models.DateTimeField(auto_now_add=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    usuario = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, related_name="movimientos_asignados")
+
+    
 
     class Meta:
         db_table = "movimientos_repuestos"
@@ -512,3 +525,14 @@ class LogAuditoria(models.Model):
 
 
 
+class CategoriaRepuesto(models.Model):
+    nombre = models.CharField(max_length=100, unique=True)
+    descripcion = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = "categorias_repuestos"
+        verbose_name = "Categoría de Repuesto"
+        verbose_name_plural = "Categorías de Repuestos"
+
+    def __str__(self):
+        return self.nombre

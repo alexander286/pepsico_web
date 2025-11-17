@@ -2765,3 +2765,60 @@ def password_change_forzada(request):
             return redirect("dashboard")
 
     return render(request, "app_taller/password_change_forzada.html", {})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from app_taller.models import Repuesto, MovimientoRepuesto
+
+@login_required
+def vista_stock_repuestos(request):
+    if not es_admin_sistema(request):
+        messages.error(request, "No tienes permisos para acceder a esta vista.")
+        return redirect("dashboard")
+
+    repuestos = Repuesto.objects.all().order_by("nombre")
+    movimientos = MovimientoRepuesto.objects.select_related("repuesto", "usuario", "orden_trabajo").order_by("-fecha_movimiento")
+
+    return render(request, "app_taller/stock_repuestos.html", {
+        "repuestos": repuestos,
+        "movimientos": movimientos,
+    })
+
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from app_taller.models import Repuesto, MovimientoRepuesto
+from app_taller.utils import get_usuario_app_from_request
+
+
+@login_required
+def vista_admin_repuestos(request):
+    usuario_app = get_usuario_app_from_request(request)
+    if not usuario_app or usuario_app.rol != "ADMIN":
+        messages.error(request, "No tienes permisos para ver esta sección.")
+        return redirect("dashboard")
+
+    repuestos = Repuesto.objects.filter(activo=True).order_by("nombre")
+    movimientos = MovimientoRepuesto.objects.select_related(
+        "repuesto", "orden_trabajo", "movido_por"
+    ).order_by("-fecha_movimiento")[:100]  # mostrar últimos 100 movimientos
+
+    return render(request, "app_taller/admin_repuestos_panel.html", {
+        "usuario_app": usuario_app,
+        "repuestos": repuestos,
+        "movimientos": movimientos,
+    })
