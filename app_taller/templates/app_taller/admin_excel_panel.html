@@ -38,18 +38,16 @@
   </section>
 
 
-  <section class="card">
+<section class="card">
     <h3>Importador Universal Etl</h3>
-    <p class="muted">Altas y actualización masiva de datos.</p>
 
-    
+    <form method="post" enctype="multipart/form-data" action="{% url 'admin_etl_universal' %}">
+        {% csrf_token %}
+        <input type="file" name="archivo" required>
+        <button type="submit">Procesar archivo (ETL)</button>
+    </form>
+</section>
 
-  <form method="post" enctype="multipart/form-data" action="{% url 'admin_etl_universal' %}">
-    {% csrf_token %}
-    <input type="file" name="archivo" required>
-    <button type="submit">Procesar archivo (ETL)</button>
-  </form>
-  </section>
 
   <section class="card">
     <h3>Usuarios</h3>

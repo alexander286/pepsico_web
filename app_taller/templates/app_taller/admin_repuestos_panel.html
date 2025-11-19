@@ -14,57 +14,71 @@
 
 <section class="card">
   <h3>Inventario actual</h3>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>SKU</th>
-        <th>Nombre</th>
-        <th>Unidad</th>
-        <th>Categoría</th>
-        <th>Stock</th>
-        <th>Precio costo</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in repuestos %}
-      <tr>
-        <td>{{ r.sku }}</td>
-        <td>{{ r.nombre }}</td>
-        <td>{{ r.unidad }}</td>
-        <td>{{ r.categoria|default:"—" }}</td>
-        <td>{{ r.stock_actual }}</td>
-        <td>${{ r.precio_costo|floatformat:0 }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+  <div class="tabla-wrapper">
+    <table class="table table-inventario">
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th>Nombre</th>
+          <th>Unidad</th>
+          <th>Categoría</th>
+          <th>Stock</th>
+          <th>Precio costo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in repuestos %}
+        <tr>
+          <td>{{ r.sku }}</td>
+          <td>{{ r.nombre }}</td>
+          <td>{{ r.unidad }}</td>
+          <td>{{ r.categoria|default:"—" }}</td>
+          <td>{{ r.stock_actual }}</td>
+          <td>${{ r.precio_costo|floatformat:0 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align:center;">No hay repuestos registrados.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section class="card" style="margin-top: 2rem;">
   <h3>Últimos movimientos</h3>
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>Fecha</th>
-        <th>Tipo</th>
-        <th>Repuesto</th>
-        <th>Cantidad</th>
-        <th>ID Solicitud</th>
-        <th>Movido por</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for m in movimientos %}
-      <tr>
-        <td>{{ m.fecha_movimiento|date:"d/m/Y H:i" }}</td>
-        <td>{{ m.tipo_movimiento }}</td>
-        <td>{{ m.repuesto.nombre }}</td>
-        <td>{{ m.cantidad }}</td>
-        <td>{{ m.motivo|default:"—" }}</td>
-        <td>{{ m.movido_por.nombre_completo }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+  <div class="tabla-wrapper">
+    <table class="table table-striped table-movimientos">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo</th>
+          <th>Repuesto</th>
+          <th>Cantidad</th>
+          <th>ID / Motivo</th>
+          <th>Movido por</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movimientos %}
+        <tr>
+          <td>{{ m.fecha_movimiento|date:"d/m/Y H:i" }}</td>
+          <td>{{ m.tipo_movimiento }}</td>
+          <td>{{ m.repuesto.nombre }}</td>
+          <td>{{ m.cantidad }}</td>
+          <td>{{ m.motivo|default:"—" }}</td>
+          <td>{{ m.movido_por.nombre_completo }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align:center;">No hay movimientos recientes.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 {% endblock %}

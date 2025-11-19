@@ -3175,3 +3175,113 @@ def admin_informe_ots_pdf(request):
     ]
 
     return pdf_tabla("Informe de Órdenes de Trabajo", headers, rows, "ordenes_trabajo.pdf")
+
+
+
+
+
+
+import csv
+import io
+import openpyxl
+
+def detectar_tipo_archivo(nombre):
+    nombre = nombre.lower()
+
+    if nombre.endswith(".xlsx") or nombre.endswith(".xls"):
+        return "excel"
+    if nombre.endswith(".csv"):
+        return "csv"
+    if nombre.endswith(".txt"):
+        return "texto"
+    if nombre.endswith(".pdf"):
+        return "pdf"
+    if nombre.endswith(".sql"):
+        return "sql"
+
+    return "desconocido"
+
+
+def leer_excel(uploaded_file):
+    wb = openpyxl.load_workbook(uploaded_file, data_only=True)
+    ws = wb.active
+    data = []
+
+    for row in ws.iter_rows(values_only=True):
+        if any(row):
+            data.append([str(x).strip() if x is not None else "" for x in row])
+
+    return data
+
+
+def leer_csv(uploaded_file):
+    text = uploaded_file.read().decode("utf-8", errors="ignore")
+    reader = csv.reader(io.StringIO(text))
+    data = []
+    for row in reader:
+        if any(row):
+            data.append([c.strip() for c in row])
+    return data
+
+
+def procesar_datos(data):
+    """
+    Aquí defines cómo se comporta el ETL.
+    Por ahora solo retorna información de depuración.
+    """
+    ok = len(data) - 1  # descuenta encabezado
+    errores = []
+
+    # ⚠️ Más adelante aquí hacemos el UPSERT real
+    # por ahora es una función placeholder
+
+    return ok, errores
+
+
+def importar_archivo_universal(request):
+    if request.method == "POST":
+        uploaded_file = request.FILES.get("archivo")
+
+        if not uploaded_file:
+            messages.error(request, "No se recibió ningún archivo.")
+            return redirect("admin_excel_panel")  # 👈 vuelve a tu panel
+
+        filename = uploaded_file.name
+        tipo = detectar_tipo_archivo(filename)
+
+        ok = 0
+        errores = []
+
+        if tipo == "excel":
+            data = leer_excel(uploaded_file)
+            ok, errores = procesar_datos(data)
+
+        elif tipo == "csv":
+            data = leer_csv(uploaded_file)
+            ok, errores = procesar_datos(data)
+
+        elif tipo == "texto":
+            ok, errores = 0, ["TXT recibido. Contenido no tabular."]
+
+        elif tipo == "pdf":
+            ok, errores = 0, ["PDF recibido. No contiene estructura tabla."]
+
+        elif tipo == "sql":
+            ok, errores = 0, ["SQL recibido. No ejecutado por seguridad."]
+
+        else:
+            ok, errores = 0, [f"Formato no soportado: {filename}"]
+
+        # Mostrar mensajes en tu panel
+        for e in errores:
+            messages.warning(request, e)
+
+        if ok > 0:
+            messages.success(request, f"Archivo '{filename}' procesado. Filas afectadas: {ok}.")
+        else:
+            messages.info(request, f"Archivo '{filename}' procesado sin cambios en BD.")
+
+        return redirect("admin_excel_panel")  # 👈 vuelve al mismo panel
+
+    # MÉTODO GET: redirigir siempre al panel
+    return redirect("admin_excel_panel")

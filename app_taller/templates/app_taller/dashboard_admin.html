@@ -52,117 +52,120 @@
     <div class="kpi-value">{{ kpi_users.supervisores }}</div>
   </div>
 </div>
-<h2>Administración de usuarios</h2>
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
-  <p class="muted" style="margin:0;">
-    Desde este panel puedes gestionar las cuentas del sistema.
+<h2 style="margin-top:1.5rem;">Administración de usuarios</h2>
+
+{# ⭐ Botones de acción en fila que se adaptan en móvil #}
+<div class="admin-actions-bar">
+  <p class="muted">
+    Desde este panel puedes gestionar las cuentas del sistema y las cargas masivas.
   </p>
-  <a href="{% url 'admin_usuarios_panel' %}" class="btn btn-primary btn-sm">
-    👥 Gestion de Usuarios
-  </a>
+  <div class="admin-actions-buttons">
+    <a href="{% url 'admin_usuarios_panel' %}" class="btn btn-primary btn-sm">
+      👥 Gestión de Usuarios
+    </a>
 
+    <a href="{% url 'admin_excel_panel' %}" class="btn btn-sm">
+      📊 Importar / Exportar (Excel)
+    </a>
 
-  <a href="{% url 'admin_excel_panel' %}" class="btn btn-sm">
-  📊 Importar / Exportar (Excel)
-</a>
-
-
-<a href="{% url 'admin_repuestos_panel' %}" class="btn btn-sm btn-primary">
-  🧰 Ver Repuestos
-</a>
-
- 
-
+    <a href="{% url 'admin_repuestos_panel' %}" class="btn btn-sm btn-primary">
+      🧰 Ver Repuestos
+    </a>
+  </div>
 </div>
 
-
-<div class="grid-2" style="display:grid;grid-template-columns:1.3fr .7fr;gap:14px;margin-top:1.5rem;">
+<div class="grid-2 admin-grid">
   <section class="card">
     <h3>Gestión de usuarios</h3>
-    <table class="ot-table">
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>RUT</th>
-          <th>Rol</th>
-          <th>Email</th>
-          <th>Estado</th>
-          <th style="width:160px;">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for u in usuarios %}
-        <tr>
-          <td>{{ u.nombre_completo }}</td>
-          <td>{{ u.rut }}</td>
-          <td>{{ u.rol }}</td>
-          <td>{{ u.email }}</td>
-          <td>
+
+    {# ⭐ Wrapper responsivo para tabla #}
+    <div class="tabla-wrapper">
+      <table class="ot-table tabla-responsiva tabla-usuarios">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>RUT</th>
+            <th>Rol</th>
+            <th>Email</th>
+            <th>Estado</th>
+            <th style="min-width:160px;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in usuarios %}
+          <tr>
+            <td>{{ u.nombre_completo }}</td>
+            <td>{{ u.rut }}</td>
+            <td>{{ u.rol }}</td>
+            <td>{{ u.email }}</td>
+            <td>
               {% if u.activo %}
                 <span class="badge state-en_proceso">Activo</span>
               {% else %}
                 <span class="badge state-pausada">Inactivo</span>
               {% endif %}
-          </td>
+            </td>
+            <td>
+              <div class="acciones-usuario">
+                <form method="post"
+                      action="{% url 'admin_usuario_toggle_activo' u.id %}">
+                  {% csrf_token %}
+                  <button class="btn btn-xs" type="submit">
+                    {% if u.activo %}Desactivar{% else %}Activar{% endif %}
+                  </button>
+                </form>
 
-          <td>
-            <form method="post"
-                  action="{% url 'admin_usuario_toggle_activo' u.id %}"
-                  style="display:inline;">
-              {% csrf_token %}
-              <button class="btn btn-xs"
-                      type="submit">
-                {% if u.activo %}Desactivar{% else %}Activar{% endif %}
-              </button>
-            </form>
-
-            <form method="post"
-                  action="{% url 'admin_usuario_reset_password' u.id %}"
-                  style="display:inline;margin-left:4px;">
-              {% csrf_token %}
-              <button class="btn btn-xs" type="submit">
-                Resetear clave
-              </button>
-            </form>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6" style="text-align:center;">No hay usuarios creados.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+                <form method="post"
+                      action="{% url 'admin_usuario_reset_password' u.id %}">
+                  {% csrf_token %}
+                  <button class="btn btn-xs" type="submit">
+                    Resetear clave
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" style="text-align:center;">No hay usuarios creados.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section class="card">
     <h3>Últimas OTs creadas</h3>
-    <a class="btn btn-xs" href="{% url 'ot_list' %}" >
-                Listado Ots
-              </a>
-    <table class="table-compact">
-      <thead>
-        <tr>
-          <th>N°</th><th>Patente</th><th>Estado</th><th>Prioridad</th><th>F. Apertura</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ot in ultimas_ots %}
-        <tr onclick="location.href='{% url 'ot_detalle' numero_ot=ot.numero_ot %}'" style="cursor:pointer;">
-          <td>#{{ ot.numero_ot }}</td>
-          <td>{{ ot.vehiculo.patente }}</td>
-          <td>{{ ot.get_estado_display }}</td>
-          <td>{{ ot.get_prioridad_display }}</td>
-          <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5">Sin registros.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <a class="btn btn-xs" href="{% url 'ot_list' %}">
+      📄 Listado OTs
+    </a>
 
-    <hr style="margin:1rem 0;opacity:.2;">
-
-    
+    <div class="tabla-wrapper" style="margin-top:.5rem;">
+      <table class="table-compact tabla-responsiva">
+        <thead>
+          <tr>
+            <th>N°</th>
+            <th>Patente</th>
+            <th>Estado</th>
+            <th>Prioridad</th>
+            <th>F. Apertura</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ot in ultimas_ots %}
+          <tr onclick="location.href='{% url 'ot_detalle' numero_ot=ot.numero_ot %}'" style="cursor:pointer;">
+            <td>#{{ ot.numero_ot }}</td>
+            <td>{{ ot.vehiculo.patente }}</td>
+            <td>{{ ot.get_estado_display }}</td>
+            <td>{{ ot.get_prioridad_display }}</td>
+            <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5">Sin registros.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
 </div>
 

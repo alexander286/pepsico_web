@@ -43,78 +43,78 @@
   </div>
 </form>
 
-<div class="card" style="overflow:auto;">
-  <table class="table">
-    <thead>
-      <tr>
-        <th>RUT</th>
-        <th>Nombre</th>
-        <th>Correo</th>
-        <th>Rol</th>
-        <th>Taller</th>
-        <th>Estado</th>
-        <th style="width:260px;">Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
+<div class="card">
+  <div class="tabla-wrapper">
+    <table class="table tabla-responsiva tabla-usuarios">
+      <thead>
+        <tr>
+          <th>RUT</th>
+          <th>Nombre</th>
+          <th>Correo</th>
+          <th>Rol</th>
+          <th>Taller</th>
+          <th>Estado</th>
+          <th style="width:260px;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
 
-      {% for u in usuarios %}
-      <tr>
-        <td>{{ u.rut }}</td>
-        <td>{{ u.nombre_completo }}</td>
-        <td>{{ u.email }}</td>
-        <td>{{ u.rol|default:"—" }}</td>
-        <td>{{ u.taller.nombre|default:"—" }}</td>
+        {% for u in usuarios %}
+        <tr>
+          <td>{{ u.rut }}</td>
+          <td>{{ u.nombre_completo }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.rol|default:"—" }}</td>
+          <td>{{ u.taller.nombre|default:"—" }}</td>
 
-        <td>
-          {% if u.activo %}
-          <span class="badge state-ok">Activo</span>
-          {% else %}
-          <span class="badge state-pendiente">Inactivo</span>
-          {% endif %}
-        </td>
+          <td>
+            {% if u.activo %}
+            <span class="badge state-ok">Activo</span>
+            {% else %}
+            <span class="badge state-pendiente">Inactivo</span>
+            {% endif %}
+          </td>
 
-        <td>
-          <div style="display:flex; gap:.35rem; flex-wrap:wrap;">
+          <td>
+            <div class="acciones-usuario">
+              {# Activar / Desactivar #}
+              <form method="post" action="{% url 'admin_usuario_toggle_activo' usuario_id=u.id %}">
+                {% csrf_token %}
+                {% if u.activo %}
+                <button class="btn btn-sm" type="submit">Desactivar</button>
+                {% else %}
+                <button class="btn btn-sm btn-primary" type="submit">Activar</button>
+                {% endif %}
+              </form>
 
-            {# Activar / Desactivar #}
-            <form method="post" action="{% url 'admin_usuario_toggle_activo' usuario_id=u.id %}">
-              {% csrf_token %}
-              {% if u.activo %}
-              <button class="btn btn-sm" type="submit">Desactivar</button>
-              {% else %}
-              <button class="btn btn-sm btn-primary" type="submit">Activar</button>
-              {% endif %}
-            </form>
+              {# Resetear clave #}
+              <form method="post" action="{% url 'admin_usuario_reset_password' usuario_id=u.id %}">
+                {% csrf_token %}
+                <button class="btn btn-sm" type="submit">Resetear clave</button>
+              </form>
 
-            {# Resetear clave #}
-            <form method="post" action="{% url 'admin_usuario_reset_password' usuario_id=u.id %}">
-              {% csrf_token %}
-              <button class="btn btn-sm" type="submit">Resetear clave</button>
-            </form>
+              {# Cambiar rol #}
+              <form method="post" action="{% url 'admin_usuario_cambiar_rol' usuario_id=u.id %}">
+                {% csrf_token %}
+                <select name="rol" class="select-rol-usuario">
+                  {% for r in roles_disponibles %}
+                  <option value="{{ r }}" {% if u.rol == r %}selected{% endif %}>{{ r }}</option>
+                  {% endfor %}
+                </select>
+                <button class="btn btn-sm" type="submit">Guardar rol</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" style="text-align:center;">No se encontraron usuarios con los filtros aplicados.</td>
+        </tr>
+        {% endfor %}
 
-            {# Cambiar rol #}
-            <form method="post" action="{% url 'admin_usuario_cambiar_rol' usuario_id=u.id %}">
-              {% csrf_token %}
-              <select name="rol" style="padding:2px 4px; font-size:.8rem;">
-                {% for r in roles_disponibles %}
-                <option value="{{ r }}" {% if u.rol == r %}selected{% endif %}>{{ r }}</option>
-                {% endfor %}
-              </select>
-              <button class="btn btn-sm" type="submit">Guardar rol</button>
-            </form>
-
-          </div>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="7" style="text-align:center;">No se encontraron usuarios con los filtros aplicados.</td>
-      </tr>
-      {% endfor %}
-
-    </tbody>
-  </table>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 {% endblock %}

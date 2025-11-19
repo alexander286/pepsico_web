@@ -1,11 +1,10 @@
 {% extends "app_taller/base.html" %}
 {% load static %}
 
-
 {% block content %}
 <h2>OT #{{ ot.numero_ot }}</h2>
 
-<div class="card">
+<div class="card ot-detalle-card">
   <div class="badges">
     <span class="badge info">🚗 Vehículo: {{ ot.vehiculo.patente }}</span>
     <span class="badge {% if ot.prioridad == 'ALTA' %}warn{% else %}info{% endif %}">🔥 Prioridad: {{ ot.get_prioridad_display }}</span>
@@ -13,8 +12,10 @@
     <span class="badge info">🏭 Taller: {{ ot.taller.nombre }}</span>
   </div>
 
-  <div class="grid-2">
-    <div>
+  {# 🔹 NUEVO LAYOUT RESPONSIVE #}
+  <div class="ot-detalle-layout">
+    <!-- COLUMNA IZQUIERDA: datos de vehículo / kpis -->
+    <div class="ot-detalle-main">
       <div class="meta">
         <div class="item"><b>Marca</b>{{ ot.vehiculo.marca|default:"—" }}</div>
         <div class="item"><b>Modelo</b>{{ ot.vehiculo.modelo|default:"—" }}</div>
@@ -40,9 +41,8 @@
       </div>
     </div>
 
-    
-    <!-- Columna derecha: acciones rápidas “cards” -->
-    <div style="display:grid;gap:12px">
+    <!-- COLUMNA DERECHA: acciones rápidas -->
+    <aside class="ot-detalle-side">
       {% if soy_supervisor %}
       <div class="card">
         <h3>Asignar mecánico</h3>
@@ -90,9 +90,11 @@
           </div>
         </form>
       </div>
-    </div>
+    </aside>
   </div>
 </div>
+
+{# ---------- RESTO IGUAL ---------- #}
 
 <div class="tabs card">
   <div class="tab-nav">
@@ -146,64 +148,41 @@
       </tbody>
     </table>
   </section>
-  
 
+  {% load humanize %}
 
+  <section class="card">
+    <h3>Movimientos de repuestos</h3>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Repuesto</th>
+          <th class="ta-right">Cant.</th>
+          <th class="ta-right">Costo unit.</th>
+          <th class="ta-right">Subtotal</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movs_repuestos %}
+        <tr>
+          <td>{{ m.repuesto }}</td>
+          <td class="ta-right">{{ m.cantidad }}</td>
+          <td class="ta-right">{{ m.unit_to_show|floatformat:0|intcomma }}</td>
+          <td class="ta-right">{{ m.subtotal|floatformat:0|intcomma }}</td>
+          <td>{{ m.fecha_movimiento|date:"d-m-Y H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Sin movimientos de repuestos asociados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
-{% load humanize %}
-
-<section class="card">
-  <h3>Movimientos de repuestos</h3>
-
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Repuesto</th>
-        <th class="ta-right">Cant.</th>
-        <th class="ta-right">Costo unit.</th>
-        <th class="ta-right">Subtotal</th>
-        <th>Fecha</th>
-      </tr>
-    </thead>
-
-    <tbody>
-      {% for m in movs_repuestos %}
-      <tr>
-        <td>{{ m.repuesto }}</td>
-        <td class="ta-right">{{ m.cantidad }}</td>
-        <td class="ta-right">{{ m.unit_to_show|floatformat:0|intcomma }}</td>
-
-        <td class="ta-right">{{ m.subtotal|floatformat:0|intcomma }}</td>
-        <td>{{ m.fecha_movimiento|date:"d-m-Y H:i" }}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5">Sin movimientos de repuestos asociados.</td></tr>
-      {% endfor %}
-    </tbody>
-
-    
-  </table>
-
-  <section class="card" style="margin-top:1rem;">
-  <h3>Resumen de costos</h3>
-  <p><strong>Total repuestos OT:</strong> ${{ total_repuestos_ot|floatformat:0|intcomma }}</p>
- 
-
-</section>
-
-</section>
-
-
-
-
-
-
-
-
-
-
-
-
+    <section class="card" style="margin-top:1rem;">
+      <h3>Resumen de costos</h3>
+      <p><strong>Total repuestos OT:</strong> ${{ total_repuestos_ot|floatformat:0|intcomma }}</p>
+    </section>
+  </section>
 
   <!-- Observaciones -->
   <section id="tab-obs" class="tab-panel">
@@ -262,31 +241,31 @@
 
     <div class="section-title" style="margin-top:12px"><span class="dot"></span><h3>Archivos</h3></div>
     <h3>Adjuntos</h3>
-{% if adjuntos %}
-  <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px;">
-    {% for a in adjuntos %}
-      <div class="card" style="padding:.5rem;">
-        {% if a.tipo_archivo == "IMG" %}
-          <a href="{{ a.ruta_archivo }}" target="_blank" title="{{ a.nombre_archivo }}">
-            <img src="{{ a.ruta_archivo }}" alt="{{ a.nombre_archivo }}" style="width:100%; height:120px; object-fit:cover; border-radius:6px;">
-          </a>
-        {% elif a.tipo_archivo == "PDF" %}
-          <div style="display:flex; flex-direction:column; gap:.35rem;">
-            <span>📄 {{ a.nombre_archivo }}</span>
-            <a class="btn btn-sm" href="{{ a.ruta_archivo }}" target="_blank">Ver PDF</a>
+    {% if adjuntos %}
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px;">
+        {% for a in adjuntos %}
+          <div class="card" style="padding:.5rem;">
+            {% if a.tipo_archivo == "IMG" %}
+              <a href="{{ a.ruta_archivo }}" target="_blank" title="{{ a.nombre_archivo }}">
+                <img src="{{ a.ruta_archivo }}" alt="{{ a.nombre_archivo }}" style="width:100%; height:120px; object-fit:cover; border-radius:6px;">
+              </a>
+            {% elif a.tipo_archivo == "PDF" %}
+              <div style="display:flex; flex-direction:column; gap:.35rem;">
+                <span>📄 {{ a.nombre_archivo }}</span>
+                <a class="btn btn-sm" href="{{ a.ruta_archivo }}" target="_blank">Ver PDF</a>
+              </div>
+            {% else %}
+              <a href="{{ a.ruta_archivo }}" target="_blank">⬇ {{ a.nombre_archivo }}</a>
+            {% endif %}
+            <div style="margin-top:.35rem; font-size:.8rem; color:#555;">
+              Subido: {{ a.fecha_subida|date:"d-m-Y H:i" }}
+            </div>
           </div>
-        {% else %}
-          <a href="{{ a.ruta_archivo }}" target="_blank">⬇ {{ a.nombre_archivo }}</a>
-        {% endif %}
-        <div style="margin-top:.35rem; font-size:.8rem; color:#555;">
-          Subido: {{ a.fecha_subida|date:"d-m-Y H:i" }}
-        </div>
+        {% endfor %}
       </div>
-    {% endfor %}
-  </div>
-{% else %}
-  <p>No hay adjuntos aún.</p>
-{% endif %}
+    {% else %}
+      <p>No hay adjuntos aún.</p>
+    {% endif %}
   </section>
 
   <!-- Historial -->
@@ -313,13 +292,8 @@
   </section>
 </div>
 
-
-
 {% endblock %}
 
-
-
-{# Carga del JS específico de esta página #}
 {% block extra_js %}
   <script src="{% static 'js/checklist.js' %}?v=20251112" defer></script>
 {% endblock %}

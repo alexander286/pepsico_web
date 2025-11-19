@@ -1,15 +1,27 @@
 {% extends "app_taller/base.html" %}
 {% load static %}
-<link rel="stylesheet" href="{% static 'css/base.css' %}">
-<script src="{% static 'js/main.js' %}" defer></script>
-
 
 {% block title %}Dashboard Recepcionista{% endblock %}
+
 {% block content %}
-<h2>Bienvenido,
-    {{ usuario_app.nombre_completo|default:request.user.get_full_name|default:request.user.username }} 👋
-  </h2>
-  <h2>Dashboard · Recepcionista</h2>
-  <a href="{% url 'ingreso_nuevo' %}" class="btn btn-primary">Nuevo ingreso</a>
-  <p>Acceso total a módulos y reportes.</p>
+<h2>
+  Bienvenido,
+  {{ usuario_app.nombre_completo|default:request.user.get_full_name|default:request.user.username }} 👋
+</h2>
+<p>Dashboard · Recepcionista — punto de inicio para registrar ingresos al taller.</p>
+
+<div class="dashboard-actions" style="margin-top:1rem;">
+  <a href="{% url 'ingreso_nuevo' %}" class="btn btn-primary">
+    ➕ Nuevo ingreso de vehículo
+  </a>
+</div>
+
+<section class="card" style="margin-top:1.5rem;">
+  <h3>Accesos rápidos</h3>
+  <ul style="margin-left:1rem; padding-left:0; list-style:disc;">
+    <li>Registrar el ingreso de un vehículo al taller.</li>
+    <li>Ver órdenes de trabajo generadas a partir de los ingresos.</li>
+    <li>Apoyar al supervisor con la información inicial del vehículo.</li>
+  </ul>
+</section>
 {% endblock %}

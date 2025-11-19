@@ -24,46 +24,45 @@
 
     <div class="form-grid-2">
       <div class="form-group">
-        <label>RUT</label>
-        <input type="text" name="rut" value="{{ rut|default:'' }}" placeholder="11.111.111-1" required>
+        <label for="id_rut">RUT</label>
+        <input id="id_rut" type="text" name="rut" value="{{ rut|default:'' }}" placeholder="11.111.111-1" required>
         <small class="text-muted">Usar formato chileno estándar.</small>
       </div>
 
       <div class="form-group">
-        <label>Correo electrónico</label>
-        <input type="email" name="email" value="{{ email|default:'' }}" placeholder="usuario@demo.cl" required>
+        <label for="id_email">Correo electrónico</label>
+        <input id="id_email" type="email" name="email" value="{{ email|default:'' }}" placeholder="usuario@demo.cl" required>
         <small class="text-muted">Se utilizará como usuario de acceso.</small>
       </div>
     </div>
 
     <div class="form-grid-2">
       <div class="form-group">
-        <label>Nombres</label>
-        <input type="text" name="nombres" value="{{ nombres|default:'' }}" required>
+        <label for="id_nombres">Nombres</label>
+        <input id="id_nombres" type="text" name="nombres" value="{{ nombres|default:'' }}" required>
       </div>
 
       <div class="form-group">
-        <label>Apellidos</label>
-        <input type="text" name="apellidos" value="{{ apellidos|default:'' }}" required>
+        <label for="id_apellidos">Apellidos</label>
+        <input id="id_apellidos" type="text" name="apellidos" value="{{ apellidos|default:'' }}" required>
       </div>
     </div>
 
     <div class="form-grid-2">
       <div class="form-group">
-        <label>Rol</label>
-        <select name="rol">
+        <label for="id_rol">Rol</label>
+        <select id="id_rol" name="rol" required>
           <option value="">Selecciona un rol</option>
           {% for r in roles_disponibles %}
-            <option value="{{ r }}">{{ r }}</option>
+            <option value="{{ r }}" {% if rol == r %}selected{% endif %}>{{ r }}</option>
           {% endfor %}
-          
         </select>
         <small class="text-muted">Define los permisos principales del usuario.</small>
       </div>
 
       <div class="form-group">
-        <label>Taller (opcional)</label>
-        <select name="taller_id">
+        <label for="id_taller">Taller (opcional)</label>
+        <select id="id_taller" name="taller_id">
           <option value="">— Sin asignar —</option>
           {% for t in talleres %}
             <option value="{{ t.id }}" {% if taller_id|stringformat:"s" == t.id|stringformat:"s" %}selected{% endif %}>
@@ -76,8 +75,8 @@
     </div>
 
     <div class="form-group">
-      <label>Teléfono (opcional)</label>
-      <input type="text" name="telefono" value="{{ telefono|default:'' }}" placeholder="+56 9 1234 5678">
+      <label for="id_telefono">Teléfono (opcional)</label>
+      <input id="id_telefono" type="text" name="telefono" value="{{ telefono|default:'' }}" placeholder="+56 9 1234 5678">
     </div>
 
     <hr style="margin:1.25rem 0; opacity:.2;">
@@ -86,7 +85,7 @@
       <button type="submit" class="btn btn-primary">
         Crear usuario
       </button>
-      <a href="{% url 'admin_usuario_nuevo' %}" class="btn btn-link">
+      <a href="{% url 'admin_usuarios_panel' %}" class="btn btn-link">
         Cancelar
       </a>
     </div>

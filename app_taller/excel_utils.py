@@ -406,13 +406,26 @@ def importar_usuarios_xlsx(uploaded_file) -> Tuple[int, List[str]]:
         if activo_txt in {"NO", "N", "0", "FALSE"}:
             activo = False
 
+        # buscar taller si viene
         taller_obj = None
-        if taller_nombre:
-            taller_obj = Taller.objects.filter(nombre__iexact=taller_nombre).first()
-            if not taller_obj:
-                errores.append(
-                    f"Fila {row_idx}: Taller '{taller_nombre}' no encontrado. Se deja sin taller."
-                )
+        nombre_taller_original = (taller_nombre or "").strip()
+
+        if nombre_taller_original:
+            # búsqueda directa por nombre exacto (ignorando mayúsculas/minúsculas)
+            taller_obj = Taller.objects.filter(
+                nombre__iexact=nombre_taller_original
+            ).first()
+
+        # si NO se encuentra, recién ahí mostramos mensaje
+        if not taller_obj:
+            errores.append(
+                f"Fila {row_idx}: Taller '{nombre_taller_original}' no encontrado. Se deja sin taller."
+            )
+
+        # si se encontró y el modelo Usuario tiene FK taller, se asigna
+        if taller_obj and hasattr(usuario, "taller"):
+            usuario.taller = taller_obj
+
 
         usuario, created = Usuario.objects.get_or_create(
             email=email,

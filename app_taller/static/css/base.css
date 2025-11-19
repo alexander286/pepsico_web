@@ -617,6 +617,12 @@ body.theme-dark  .theme-switch__stars-container {
 
 
 /* === MODO CLARO: meta items === */
+body.theme-light .card a{
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #0f172a !important;
+}
+/* === MODO CLARO: meta items === */
 body.theme-light .meta .item {
   background: #ffffff !important;
   border: 1px solid #e5e7eb !important;
@@ -932,4 +938,813 @@ body.theme-dark .theme-switch__container {
   -webkit-transform: translateY(-50%);
   -ms-transform: translateY(-50%);
   transform: translateY(-50%);
+}
+
+
+
+
+
+
+
+/* --- Ajustes generales --- */
+body {
+    font-size: 14px;
+    margin: 0;
+}
+
+.main-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Tarjetas / secciones */
+.card {
+    margin-bottom: 1rem;
+}
+
+/* --- Tablas responsivas --- */
+
+.tabla-wrapper {
+    width: 100%;
+    overflow-x: auto;     /* permite scroll horizontal en pantallas chicas */
+}
+
+.tabla-responsiva {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabla-responsiva th,
+.tabla-responsiva td {
+    padding: 0.4rem;
+    font-size: 0.85rem;
+}
+
+/* --- Layout responsive --- */
+@media (max-width: 768px) {
+    /* Si tienes sidebar + contenido, ponerlo uno bajo otro */
+    .layout-main {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        margin-bottom: 1rem;
+        position: static;
+    }
+
+    .content {
+        width: 100%;
+    }
+
+    /* Botones y formularios ocupando todo el ancho */
+    form input,
+    form select,
+    form textarea,
+    form button {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Tablas: dejar mínimo zoom y permitir scroll lateral */
+    .tabla-wrapper {
+        margin-bottom: 1rem;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* --- tablas responsivas --- */
+.tabla-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tabla-responsiva {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-responsiva th,
+.tabla-responsiva td {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* --- filtros / header OT --- */
+.ot-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ot-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ot-filters input,
+.ot-filters select {
+  min-width: 150px;
+}
+
+/* --- versión móvil --- */
+@media (max-width: 768px) {
+
+  .ot-list-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ot-filters {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .ot-filters input,
+  .ot-filters select,
+  .ot-filters button,
+  .ot-filters a.btn-icon {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .btn-nueva-ot {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* si quieres aligerar la tabla en mobile, oculta 1–2 columnas */
+  .tabla-ots th:nth-child(6),
+  .tabla-ots td:nth-child(6),
+  .tabla-ots th:nth-child(8),
+  .tabla-ots td:nth-child(8) {
+    display: none; /* oculta "Supervisor" y "F. Apertura" en pantallas pequeñas */
+  }
+}
+
+
+
+/* --- tablas responsivas --- */
+.tabla-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tabla-responsiva {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-responsiva th,
+.tabla-responsiva td {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* --- filtros / header OT --- */
+.ot-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ot-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ot-filters input,
+.ot-filters select {
+  min-width: 150px;
+}
+
+/* --- versión móvil --- */
+@media (max-width: 768px) {
+
+  .ot-list-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ot-filters {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .ot-filters input,
+  .ot-filters select,
+  .ot-filters button,
+  .ot-filters a.btn-icon {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .btn-nueva-ot {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* opcional: ocultar algunas columnas en móvil */
+  .tabla-ots th:nth-child(6),
+  .tabla-ots td:nth-child(6),
+  .tabla-ots th:nth-child(8),
+  .tabla-ots td:nth-child(8) {
+    display: none;
+  }
+}
+/* ---- Detalle OT: layout de dos columnas ---- */
+
+.ot-detalle-card {
+  overflow-x: hidden;
+}
+
+.ot-detalle-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.ot-detalle-main {
+  flex: 2 1 0;
+  min-width: 0;
+}
+
+.ot-detalle-side {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Tabs y tablas más amigables en pantallas pequeñas */
+@media (max-width: 768px) {
+
+  .ot-detalle-layout {
+    flex-direction: column;      /* 👉 columnas apiladas */
+  }
+
+  .ot-detalle-side {
+    width: 100%;
+  }
+
+  .tabs .tab-nav {
+    flex-wrap: wrap;
+    gap: .25rem;
+  }
+
+  .tabs .table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;            /* 👉 scroll horizontal si se pasa */
+  }
+}
+
+
+
+.form-card {
+  max-width: 420px;
+  margin: auto;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.input-full {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.btn-full {
+  width: 100%;
+  margin-top: 8px;
+}
+
+@media (max-width: 480px) {
+  h2 { font-size: 1.4rem; }
+  .form-card {
+    padding: 1rem !important;
+  }
+}
+.form-card {
+  max-width: 420px;
+  margin: auto;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.input-full {
+  width: 100%;
+}
+.btn-full {
+  width: 100%;
+}
+/* Layout del formulario de ingreso */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+}
+
+/* Las filas que ocupan todo el ancho (observaciones, adjuntos) */
+.form-group.full-row {
+  grid-column: 1 / -1;
+}
+
+/* Encabezado del ingreso */
+.ingreso-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ingreso-help {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .25rem;
+  text-align: right;
+}
+
+/* Acciones del formulario */
+.form-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+/* 🔻 MODO MÓVIL (pantallas pequeñas) */
+@media (max-width: 768px) {
+
+  .ingreso-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ingreso-help {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .form-grid-2 {
+    grid-template-columns: 1fr; /* una sola columna en móvil */
+  }
+
+  .form-group.full-row {
+    grid-column: 1 / 2;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .form-actions .btn,
+  .form-actions .btn-primary {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+
+/* --- HOME PAGE WRAPPER --- */
+.home-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1rem;
+}
+
+.home-card {
+  text-align: center;
+  padding: 2rem;
+  max-width: 420px;
+  width: 100%;
+}
+
+.intro-text {
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+/* Botón grande para home */
+.home-btn {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+/* ------- MOBILE RESPONSIVE ------- */
+@media (max-width: 768px) {
+  .home-card {
+    padding: 1.5rem;
+  }
+
+  .home-btn {
+    font-size: 1.05rem;
+    padding: 0.85rem;
+  }
+}
+/* Acciones rápidas en el dashboard */
+.dashboard-actions {
+  margin: 10px 0 18px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Grid principal del dashboard supervisor */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 14px;
+  margin-top: 1rem;
+}
+
+/* Wrapper para tablas con scroll horizontal en pantallas pequeñas */
+.tabla-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Ajustes responsive */
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;  /* columnas apiladas */
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-actions {
+    flex-direction: column;
+  }
+
+  .dashboard-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .table-compact th,
+  .table-compact td {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.5rem;
+  }
+}
+/* Botonera del admin */
+.admin-actions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .75rem;
+}
+
+.admin-actions-bar p {
+  margin: 0;
+  flex: 1 1 220px;
+}
+
+.admin-actions-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: flex-end;
+}
+
+/* Grilla admin */
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1.3fr .7fr;
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablas responsivas */
+.tabla-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tabla-responsiva {
+  min-width: 100%;
+}
+
+/* Botones de acciones de usuario en columna en móvil */
+.acciones-usuario {
+  display: flex;
+  gap: .25rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .acciones-usuario {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+
+
+/* ===== Layout general ===== */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* ===== Topbar ===== */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .5rem 1rem;
+  flex-wrap: wrap; /* 🔹 clave para móvil */
+}
+
+.topbar .brand img {
+  max-height: 40px;
+  height: auto;
+  width: auto;
+}
+
+/* nav y controles de tema en fila en desktop */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.topbar-right nav a {
+  margin-left: .25rem;
+  white-space: nowrap;
+}
+
+/* ===== Mensajes ===== */
+.message-container {
+  margin-bottom: .75rem;
+}
+
+.message-box {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .75rem;
+}
+
+/* ===== Ajustes mobile ===== */
+@media (max-width: 768px) {
+  .container {
+    padding: .75rem .75rem 1rem;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .topbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .topbar-right nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem .5rem;
+  }
+
+  .topbar-right nav a {
+    margin: 0;
+    font-size: .9rem;
+  }
+
+  h1, h2 {
+    font-size: 1.2rem;
+  }
+
+  .card {
+    padding: .75rem;
+  }
+}
+/* ===== Cabecera de página genérica (page-header) ===== */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.page-header h2 {
+  margin: 0 0 .25rem;
+}
+
+.page-subtitle {
+  margin: 0;
+  color: var(--text-muted, #aaa);
+  font-size: .9rem;
+}
+
+/* ===== Filtros de administración ===== */
+.admin-filters {
+  margin-bottom: 1rem;
+}
+
+.admin-filters .filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem 1rem;
+  align-items: flex-end;
+}
+
+.admin-filters .filter-field {
+  min-width: 180px;
+  flex: 1 1 200px;
+}
+
+.admin-filters .filter-field label {
+  display: block;
+  font-size: .85rem;
+  margin-bottom: .25rem;
+}
+
+.admin-filters .filter-actions {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+/* ===== Tablas responsivas ===== */
+.tabla-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tabla-responsiva {
+  min-width: 720px; /* evita que en móvil se aplaste todo; se usa scroll horizontal */
+}
+
+/* ===== Acciones de cada usuario ===== */
+.acciones-usuario {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+}
+
+.select-rol-usuario {
+  padding: 2px 4px;
+  font-size: .8rem;
+  max-width: 140px;
+}
+
+/* ===== Ajustes específicos para móvil ===== */
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-header > a.btn {
+    align-self: flex-start;
+  }
+
+  .admin-filters .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-filters .filter-field,
+  .admin-filters .filter-actions {
+    width: 100%;
+  }
+
+  .acciones-usuario {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .acciones-usuario form {
+    width: 100%;
+  }
+
+  .acciones-usuario .btn,
+  .acciones-usuario .btn-sm {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
+/* Grid básico de 2 columnas para formularios */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+/* Agrupar acciones de formulario */
+.form-actions {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Ajuste mobile */
+@media (max-width: 768px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  section.card[style*="max-width:720px"] {
+    max-width: 100%;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .form-actions .btn,
+  .form-actions .btn-link {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Contenedor para tablas responsivas (scroll horizontal en mobile) */
+.tabla-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Opcional: afinar tablas de inventario/movimientos */
+.table-inventario th,
+.table-inventario td,
+.table-movimientos th,
+.table-movimientos td {
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .5rem;
+  }
+
+  .page-header .btn-sm {
+    align-self: stretch;
+    text-align: center;
+  }
 }

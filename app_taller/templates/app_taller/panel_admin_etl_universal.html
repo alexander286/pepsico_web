@@ -1,0 +1,40 @@
+{% extends "app_taller/base.html" %}
+
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>ETL Universal – Importar archivos</h2>
+    <p>
+        Sube un archivo de datos (Excel, CSV, TXT, PDF, SQL, etc.) para que el sistema lo
+        procese. Para Excel/CSV intentará limpiar y cargar datos a la base.
+    </p>
+
+    {# mensajes de Django (success / error / warning) #}
+    {% if messages %}
+        <div>
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="mt-3">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="id_archivo" class="form-label">Archivo a importar</label>
+            <input type="file" name="archivo" id="id_archivo" class="form-control" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Procesar archivo
+        </button>
+    </form>
+
+    <hr>
+
+    <p class="text-muted mt-3">
+        Nota: Los datos válidos se insertan o actualizan sin borrar registros existentes.
+    </p>
+</div>
+{% endblock %}

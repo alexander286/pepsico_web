@@ -38,60 +38,63 @@
     <a class="btn-icon" href="{% url 'ot_list' %}">🧽 Limpiar</a>
   </form>
 
-  <a href="{% url 'ingreso_nuevo' %}" class="btn-icon">➕ Nueva OT</a>
+  <a href="{% url 'ingreso_nuevo' %}" class="btn-icon btn-nueva-ot">➕ Nueva OT</a>
 </div>
 
-<div class="card" style="overflow:auto;">
-  <table class="ot-table">
-    <thead>
-      <tr>
-        <th>N° OT</th>
-        <th>Patente</th>
-        <th>Estado</th>
-        <th>Prioridad</th>
-        <th>Mecánico</th>
-        <th>Supervisor (últ. acción)</th>
-        <th>Taller</th>
-        <th>F. Apertura</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for ot in ots %}
-      {% with estado_code=ot.estado|lower prio_code=ot.prioridad|lower %}
-      <tr class="tr-link" onclick="location.href='{% url 'ot_detalle' numero_ot=ot.numero_ot %}'">
-        <td><strong>#{{ ot.numero_ot }}</strong></td>
-        <td>{{ ot.vehiculo.patente }}</td>
-        <td>
-          <span class="badge state-{{ estado_code|cut:'_' }}">{{ ot.get_estado_display }}</span>
-        </td>
-        <td>
-          <span class="badge prio-{{ prio_code|cut:'_' }}">{{ ot.get_prioridad_display }}</span>
-        </td>
-        <td>{{ ot.mecanico_asignado.nombre_completo|default:"—" }}</td>
-        <td>
-          {% if ot.hist and ot.hist.0.cambiado_por %}
-            {{ ot.hist.0.cambiado_por.nombre_completo }}
-          {% else %}—{% endif %}
-        </td>
-        <td>{{ ot.taller.nombre }}</td>
-        <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
-        <td><a class="btn-icon" href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">👁 Ver</a></td>
-      </tr>
-      {% endwith %}
-      {% empty %}
-        <tr><td colspan="9" style="text-align:center;">No hay Órdenes con estos filtros.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="card">
+  <!-- 👇 envolvemos la tabla para permitir scroll horizontal en móvil -->
+  <div class="tabla-wrapper">
+    <table class="ot-table tabla-responsiva tabla-ots">
+      <thead>
+        <tr>
+          <th>N° OT</th>
+          <th>Patente</th>
+          <th>Estado</th>
+          <th>Prioridad</th>
+          <th>Mecánico</th>
+          <th>Supervisor (últ. acción)</th>
+          <th>Taller</th>
+          <th>F. Apertura</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ot in ots %}
+        {% with estado_code=ot.estado|lower prio_code=ot.prioridad|lower %}
+        <tr class="tr-link" onclick="location.href='{% url 'ot_detalle' numero_ot=ot.numero_ot %}'">
+          <td><strong>#{{ ot.numero_ot }}</strong></td>
+          <td>{{ ot.vehiculo.patente }}</td>
+          <td>
+            <span class="badge state-{{ estado_code|cut:'_' }}">{{ ot.get_estado_display }}</span>
+          </td>
+          <td>
+            <span class="badge prio-{{ prio_code|cut:'_' }}">{{ ot.get_prioridad_display }}</span>
+          </td>
+          <td>{{ ot.mecanico_asignado.nombre_completo|default:"—" }}</td>
+          <td>
+            {% if ot.hist and ot.hist.0.cambiado_por %}
+              {{ ot.hist.0.cambiado_por.nombre_completo }}
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ ot.taller.nombre }}</td>
+          <td>{{ ot.fecha_apertura|date:"d-m-Y H:i" }}</td>
+          <td><a class="btn-icon" href="{% url 'ot_detalle' numero_ot=ot.numero_ot %}">👁 Ver</a></td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+          <tr><td colspan="9" style="text-align:center;">No hay Órdenes con estos filtros.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
 {% if is_paginated %}
-  <nav style="margin-top:1rem;">
+  <nav class="paginacion-ots">
     {% if page_obj.has_previous %}
       <a class="btn" href="?page={{ page_obj.previous_page_number }}{% if qs %}&{{ qs }}{% endif %}">« Anterior</a>
     {% endif %}
-    <span style="margin:0 0.75rem;">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
     {% if page_obj.has_next %}
       <a class="btn" href="?page={{ page_obj.next_page_number }}{% if qs %}&{{ qs }}{% endif %}">Siguiente »</a>
     {% endif %}

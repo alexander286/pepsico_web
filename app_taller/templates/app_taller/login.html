@@ -1,44 +1,39 @@
-
-
 {% extends "app_taller/base.html" %}
 {% load static %}
-<link rel="stylesheet" href="{% static 'css/base.css' %}">
-<script src="{% static 'js/main.js' %}" defer></script>
-
 
 {% block title %}Ingresar{% endblock %}
+
 {% block content %}
-  <div class="card" style="max-width:440px">
-    <h3>Iniciar sesión</h3>
-    <form method="post">
-      {% csrf_token %}
-      <label>Usuario o correo</label><br>
-      {{ form.username_or_email }}<br><br>
-      <label>Contraseña</label><br>
-      {{ form.password }}<br><br>
-      <button class="btn" type="submit">Entrar</button>
 
-      
-    </form>
+<div class="card form-card">
+  <h3>Iniciar sesión</h3>
+  <form method="post">
+    {% csrf_token %}
 
-    
-  </div>
+    <div class="form-group">
+      <label>Usuario o correo</label>
+      {{ form.username_or_email }}
+    </div>
 
+    <div class="form-group">
+      <label>Contraseña</label>
+      {{ form.password }}
+    </div>
 
+    <button class="btn btn-primary btn-full" type="submit">
+      Entrar
+    </button>
+  </form>
+</div>
 
-  
-<div class="card" style="max-width:440px">
-
-
-    <h2>Credenciales: al.aguilerao@duocuc.cl admin123 </h2> <br>
-    <h2>Credenciales: chofer@pepsico.cl  chofer12345</h2> <br>
-    <h2>Credenciales: supervisor@pepsico.cl supervisor12345</h2> <br>
-    <h2>Credenciales: mecanico@pepsico.cl mecanico12345</h2> <br>
-    
- 
-
- </div>
-
-
+<div class="card form-card" style="margin-top:1rem;">
+  <h4>Credenciales de prueba</h4>
+  <ul class="muted" style="font-size:0.9rem; list-style:disc; padding-left:1.4rem;">
+    <li><strong>ROL Admin:</strong> <code>al.aguilerao@duocuc.cl</code> / <code>admin123</code></li>
+    <li><strong>ROL Recepcionista/GUARDIA:</strong> <code>chofer@pepsico.cl</code> / <code>chofer12345</code></li>
+    <li><strong>ROL Supervisor:</strong> <code>supervisor@pepsico.cl</code> / <code>supervisor12345</code></li>
+    <li><strong>ROL Mecánico:</strong> <code>mecanico@pepsico.cl</code> / <code>mecanico12345</code></li>
+  </ul>
+</div>
 
 {% endblock %}
