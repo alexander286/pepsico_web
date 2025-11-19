@@ -2,6 +2,8 @@ from django.shortcuts import render
 import secrets
 import string
 
+import os
+
 import time
 from decimal import Decimal
 from django.db import OperationalError, transaction
@@ -21,7 +23,7 @@ from django.urls import reverse
 from django.views.generic import TemplateView, FormView
 from django import forms
 
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required,user_passes_test
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.db import transaction
@@ -190,21 +192,333 @@ class AdminDashboard(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         return ctx
     
 
+from reportlab.platypus import Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
+from django.contrib.auth.decorators import login_required, user_passes_test
+from .pdf_utils import pdf_tabla
+from .models import OrdenTrabajo
 
 
-def _es_admin(request):
-    rol = (get_user_role_dominio(request) or "").upper().strip()
+from .models import Usuario
+
+def _es_admin(user):
+    """
+    Helper para user_passes_test: recibe un django.contrib.auth.models.User
+    """
+    if not user.is_authenticated:
+        return False
+
+    # Resolver mejor el rol de dominio, pero SIN usar request
+    email = user.email or user.username
+    u = Usuario.objects.filter(email__iexact=email).first()
+    rol = (u.rol if u and u.rol else "").upper().strip()
+
     return (
         rol in {"ADMIN", "JEFE", "JEFE_TALLER", "SUPERVISOR"}
-        or request.user.is_staff
-        or request.user.is_superuser
+        or user.is_staff
+        or user.is_superuser
     )
 
+# imports necesarios arriba en views.py
+import io
+import os
+
+from django.http import HttpResponse
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required, user_passes_test
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+
+from .pdf_utils import pdf_tabla, build_header_footer
+from .models import (
+    Usuario,
+    Vehiculo,
+    OrdenTrabajo,
+    SolicitudRepuesto,
+    MovimientoRepuesto,
+    Repuesto,
+)
+from django.conf import settings
+
+@login_required
+@user_passes_test(_es_admin)
+def admin_reporte_general_pdf(request):
+    """
+    Informe general en PDF con tablas:
+    - Resumen KPIs
+    - Usuarios (máx 200)
+    - Vehículos (máx 200)
+    - Órdenes de trabajo recientes (máx 200)
+    - Solicitudes de repuesto recientes (máx 200)
+    - Movimientos de repuesto recientes (máx 200)
+    """
+
+    buffer = io.BytesIO()
+
+    from reportlab.platypus import SimpleDocTemplate, PageBreak
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=40,
+        rightMargin=40,
+        topMargin=80,
+        bottomMargin=40,
+    )
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # =========================
+    # PORTADA / RESUMEN
+    # =========================
+    titulo = "Informe general del sistema de Taller"
+    elements.append(Paragraph(titulo, styles["Title"]))
+    elements.append(Spacer(1, 8))
+
+    usuario_label = request.user.get_full_name() or request.user.username
+    elements.append(Paragraph(f"Generado por: {usuario_label}", styles["Normal"]))
+    elements.append(
+        Paragraph(
+            f"Fecha: {timezone.localtime().strftime('%d-%m-%Y %H:%M')}",
+            styles["Normal"],
+        )
+    )
+    elements.append(Spacer(1, 16))
+
+    # KPIs rápidos
+    total_usuarios = Usuario.objects.count()
+    total_vehiculos = Vehiculo.objects.count()
+    total_ots = OrdenTrabajo.objects.count()
+    ots_abiertas = OrdenTrabajo.objects.exclude(
+        estado__in=["CERRADA", "CERRADO"]
+    ).count()
+    ots_cerradas = OrdenTrabajo.objects.filter(
+        estado__in=["CERRADA", "CERRADO"]
+    ).count()
+    total_solicitudes = SolicitudRepuesto.objects.count()
+    total_movs = MovimientoRepuesto.objects.count()
+    total_repuestos = Repuesto.objects.count()
+
+    resumen_rows = [
+        ["Usuarios registrados", total_usuarios],
+        ["Vehículos registrados", total_vehiculos],
+        ["Órdenes de trabajo (total)", total_ots],
+        ["OT abiertas", ots_abiertas],
+        ["OT cerradas", ots_cerradas],
+        ["Solicitudes de repuesto", total_solicitudes],
+        ["Movimientos de repuestos", total_movs],
+        ["Repuestos en catálogo", total_repuestos],
+    ]
+    elements += pdf_tabla(
+        "Resumen general",
+        ["Indicador", "Valor"],
+        resumen_rows,
+        col_widths=[260, 50],
+    )
+
+    elements.append(PageBreak())
+
+    # =========================
+    # USUARIOS
+    # =========================
+    usuarios = (
+        Usuario.objects.all()
+        .order_by("nombre_completo")[:200]
+    )
+    usuarios_data = []
+    for u in usuarios:
+        taller_nombre = ""
+        if getattr(u, "taller_id", None):
+            taller_nombre = getattr(u.taller, "nombre", "") or ""
+        usuarios_data.append([
+            u.rut or "",
+            u.nombre_completo or "",
+            (u.rol or "").upper(),
+            taller_nombre,
+            "Activo" if u.activo else "Inactivo",
+        ])
+
+    elements += pdf_tabla(
+        "Usuarios del sistema (máx. 200)",
+        ["RUT", "Nombre", "Rol", "Taller", "Estado"],
+        usuarios_data,
+        col_widths=[70, 140, 45, 80, 45],
+    )
+
+    elements.append(PageBreak())
+
+    # =========================
+    # VEHÍCULOS
+    # =========================
+    vehiculos = Vehiculo.objects.all().order_by("patente")[:200]
+    veh_data = []
+    for v in vehiculos:
+        anio = getattr(v, "año_modelo", None) or getattr(v, "anio_modelo", "") or ""
+        veh_data.append([
+            v.patente or "",
+            getattr(v, "marca", "") or "",
+            getattr(v, "modelo", "") or "",
+            anio,
+            getattr(v, "estado", "") or "",
+        ])
+
+    elements += pdf_tabla(
+        "Vehículos registrados (máx. 200)",
+        ["Patente", "Marca", "Modelo", "Año", "Estado"],
+        veh_data,
+        col_widths=[70, 80, 110, 40, 60],
+    )
+
+    elements.append(PageBreak())
+
+    # =========================
+    # ÓRDENES DE TRABAJO
+    # =========================
+    ots = (
+        OrdenTrabajo.objects
+        .select_related("vehiculo", "taller", "mecanico_asignado")
+        .order_by("-fecha_apertura")[:200]
+    )
+    ot_data = []
+    for o in ots:
+        pat = o.vehiculo.patente if o.vehiculo_id else ""
+        tall = o.taller.nombre if o.taller_id else ""
+        mec = (
+            o.mecanico_asignado.nombre_completo
+            if o.mecanico_asignado_id
+            else ""
+        )
+        fecha = (
+            timezone.localtime(o.fecha_apertura).strftime("%d-%m-%Y %H:%M")
+            if o.fecha_apertura else ""
+        )
+        estado_disp = getattr(o, "get_estado_display", lambda: o.estado)()
+        prio_disp = getattr(o, "get_prioridad_display", lambda: o.prioridad)()
+        ot_data.append([
+            o.numero_ot,
+            pat,
+            estado_disp,
+            prio_disp,
+            tall,
+            mec,
+            fecha,
+        ])
+
+    elements += pdf_tabla(
+        "Órdenes de trabajo recientes (máx. 200)",
+        ["N° OT", "Patente", "Estado", "Prioridad", "Taller", "Mecánico", "Fecha apertura"],
+        ot_data,
+        col_widths=[50, 60, 60, 60, 80, 90, 80],
+    )
+
+    elements.append(PageBreak())
+
+    # =========================
+    # SOLICITUDES DE REPUESTO
+    # =========================
+    solicitudes = (
+        SolicitudRepuesto.objects
+        .select_related("orden_trabajo", "orden_trabajo__vehiculo", "repuesto")
+        .order_by("-fecha_creacion")[:200]
+    )
+    sol_data = []
+    for s in solicitudes:
+        ot = s.orden_trabajo
+        veh = getattr(ot, "vehiculo", None)
+        fecha = (
+            timezone.localtime(s.fecha_creacion).strftime("%d-%m-%Y %H:%M")
+            if s.fecha_creacion else ""
+        )
+        sol_data.append([
+            s.id,
+            getattr(ot, "numero_ot", "") if ot else "",
+            getattr(veh, "patente", "") if veh else "",
+            str(s.repuesto),
+            getattr(s, "cantidad_solicitada", getattr(s, "cantidad", "")),
+            "Sí" if s.urgente else "No",
+            s.estado,
+            fecha,
+        ])
+
+    elements += pdf_tabla(
+        "Solicitudes de repuesto recientes (máx. 200)",
+        ["ID", "N° OT", "Patente", "Repuesto", "Cant.", "Urgente", "Estado", "Fecha creación"],
+        sol_data,
+        col_widths=[30, 50, 55, 130, 35, 45, 60, 70],
+    )
+
+    elements.append(PageBreak())
+
+    # =========================
+    # MOVIMIENTOS DE REPUESTO
+    # =========================
+    movs = (
+        MovimientoRepuesto.objects
+        .select_related("taller", "orden_trabajo", "orden_trabajo__vehiculo", "repuesto")
+        .order_by("-fecha_movimiento")[:200]
+    )
+    mov_data = []
+    for m in movs:
+        ot = m.orden_trabajo
+        veh = getattr(ot, "vehiculo", None)
+        fecha = (
+            timezone.localtime(m.fecha_movimiento).strftime("%d-%m-%Y %H:%M")
+            if m.fecha_movimiento else ""
+        )
+        subtotal = ""
+        try:
+            if m.costo_unitario is not None and m.cantidad is not None:
+                subtotal = float(m.costo_unitario * m.cantidad)
+        except Exception:
+            subtotal = ""
+
+        mov_data.append([
+            m.id,
+            getattr(m.taller, "nombre", "") if m.taller_id else "",
+            getattr(ot, "numero_ot", "") if ot else "",
+            getattr(veh, "patente", "") if veh else "",
+            str(m.repuesto),
+            m.tipo_movimiento,
+            m.cantidad,
+            m.costo_unitario,
+            subtotal,
+            fecha,
+        ])
+
+    elements += pdf_tabla(
+        "Movimientos de repuestos recientes (máx. 200)",
+        ["ID", "Taller", "N° OT", "Patente", "Repuesto", "Tipo", "Cant.", "Costo unit.", "Subtotal", "Fecha"],
+        mov_data,
+        col_widths=[25, 70, 45, 55, 110, 40, 35, 50, 55, 70],
+    )
+
+    # =========================
+    # GENERAR PDF
+    # =========================
+    logo_path = os.path.join(
+        settings.BASE_DIR, "app_taller", "static", "img", "logo.png"
+    )
+    header_cb = build_header_footer(
+        logo_path,
+        "Informe general – Sistema de Taller PepsiCo",
+    )
+
+    doc.build(
+        elements,
+        onFirstPage=header_cb,
+        onLaterPages=header_cb,
+    )
+
+    pdf_value = buffer.getvalue()
+    buffer.close()
+
+    resp = HttpResponse(pdf_value, content_type="application/pdf")
+    resp["Content-Disposition"] = 'attachment; filename="informe_general_taller.pdf"'
+    return resp
 
 @login_required
 def admin_usuario_toggle_activo(request, usuario_id):
@@ -2822,3 +3136,42 @@ def vista_admin_repuestos(request):
         "repuestos": repuestos,
         "movimientos": movimientos,
     })
+
+
+
+from .etl_universal import importar_archivo_universal
+
+@login_required
+def admin_etl_universal(request):
+    if request.method == "POST" and request.FILES.get("archivo"):
+        ok, errores = importar_archivo_universal(request.FILES["archivo"])
+        if ok:
+            messages.success(request, f"{ok} registros procesados correctamente.")
+        for e in errores:
+            messages.warning(request, e)
+        return redirect("admin_excel_panel")
+
+    messages.error(request, "No se recibió archivo.")
+    return redirect("admin_excel_panel")
+
+
+
+from .pdf_utils import pdf_tabla
+
+@login_required
+def admin_informe_ots_pdf(request):
+    qs = OrdenTrabajo.objects.select_related("vehiculo", "taller").all()
+
+    headers = ["OT", "Patente", "Taller", "Estado", "Prioridad"]
+    rows = [
+        [
+            ot.numero_ot,
+            ot.vehiculo.patente if ot.vehiculo_id else "",
+            ot.taller.nombre if ot.taller_id else "",
+            ot.estado,
+            ot.prioridad,
+        ]
+        for ot in qs
+    ]
+
+    return pdf_tabla("Informe de Órdenes de Trabajo", headers, rows, "ordenes_trabajo.pdf")

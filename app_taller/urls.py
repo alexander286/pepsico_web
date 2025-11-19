@@ -17,7 +17,8 @@ from app_taller.views import (
     , admin_excel_export_vehiculos, admin_excel_import_vehiculos, admin_excel_export_ots, admin_excel_import_ots,
     admin_excel_export_solicitudes, admin_excel_import_solicitudes,
     admin_excel_export_repuestos,admin_excel_import_repuestos, admin_excel_export_movimientos,admin_excel_import_movimientos,
-    password_change_forzada, admin_excel_export_usuarios,vista_admin_repuestos
+    password_change_forzada, admin_excel_export_usuarios,vista_admin_repuestos, importar_archivo_universal,
+    admin_reporte_general_pdf
     
     
 
@@ -116,6 +117,8 @@ urlpatterns = [
 
     path("mi-cuenta/cambiar-clave/", password_change_forzada, name="password_change_forzada"),
     path("panel-admin/repuestos/", vista_admin_repuestos, name="admin_repuestos_panel"),
+    path("panel-admin/etl-universal/", importar_archivo_universal, name="admin_etl_universal"),
+    path("reportes/general/pdf/",views.admin_reporte_general_pdf,name="admin_reporte_general_pdf"),
 
 ]
 
