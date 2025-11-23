@@ -71,7 +71,7 @@ def role_to_url(role: str) -> str:
         return reverse('dashboard_supervisor')
     if role == 'MECANICO':
         return reverse('dashboard_mecanico')
-    if role == 'CHOFER':
+    if role == 'RECEPCIONISTA':
         return reverse('dashboard_chofer')
     return reverse('dashboard_admin')
 

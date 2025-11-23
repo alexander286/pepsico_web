@@ -11,6 +11,7 @@ class RolUsuario(models.TextChoices):
     JEFE_TALLER = "JEFE_TALLER", "Jefe de Taller"
     MECANICO = "MECANICO", "Mecánico"
     CHOFER = "CHOFER", "Chofer"
+    RECEPCIONISTA = "RECEPCIONISTA", "Recepcionista"
 
 
 class EstadoVehiculo(models.TextChoices):
