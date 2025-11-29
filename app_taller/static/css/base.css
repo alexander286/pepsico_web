@@ -1748,3 +1748,76 @@ body {
     text-align: center;
   }
 }
+
+
+
+/* ==== FIX: alineación de textos en el contenido principal ==== */
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* Asegura que títulos y párrafos NO tengan sangría rara */
+.container h1,
+.container h2,
+.container h3,
+.container p {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  text-indent: 0 !important;
+}
+/* ==== FIX: barra de acciones de admin ==== */
+
+.admin-actions-bar {
+  align-items: center;
+}
+
+.admin-actions-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .admin-actions-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-actions-buttons {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .admin-actions-buttons .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+/* ==== FIX GLOBAL: evitar corrimientos horizontales ==== */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;   /* 👈 no permitir scroll horizontal de toda la página */
+}
+
+/* El contenedor principal siempre dentro del viewport */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+/* Alinear títulos y textos del contenido principal */
+.container h1,
+.container h2,
+.container h3,
+.container p {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  text-indent: 0 !important;
+}

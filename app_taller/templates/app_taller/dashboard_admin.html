@@ -4,60 +4,67 @@
 
 <h2>Hola, {{ usuario_app.nombre_completo|default:request.user.get_username }} 👋</h2>
 <h2>Dashboard · Administrador</h2>
-<p>Vista global del sistema y administración de cuentas.</p>
+<p class="muted">Vista global del sistema y administración de cuentas.</p>
 
-<div class="kpi-grid">
-  <div class="kpi ok">
-    <div class="kpi-label">OTs total</div>
-    <div class="kpi-value">{{ kpi_ots.total }}</div>
+{# KPIs OTs #}
+<section class="card">
+  <h3>Órdenes de Trabajo</h3>
+  <div class="kpi-grid">
+    <div class="kpi ok">
+      <div class="kpi-label">OTs total</div>
+      <div class="kpi-value">{{ kpi_ots.total }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">En proceso</div>
+      <div class="kpi-value">{{ kpi_ots.en_proceso }}</div>
+    </div>
+    <div class="kpi warn">
+      <div class="kpi-label">Pendientes</div>
+      <div class="kpi-value">{{ kpi_ots.pendientes }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Cerradas</div>
+      <div class="kpi-value">{{ kpi_ots.cerradas }}</div>
+    </div>
+    <div class="kpi danger">
+      <div class="kpi-label">Prioridad crítica</div>
+      <div class="kpi-value">{{ kpi_ots.criticas }}</div>
+    </div>
   </div>
-  <div class="kpi">
-    <div class="kpi-label">En proceso</div>
-    <div class="kpi-value">{{ kpi_ots.en_proceso }}</div>
-  </div>
-  <div class="kpi warn">
-    <div class="kpi-label">Pendientes</div>
-    <div class="kpi-value">{{ kpi_ots.pendientes }}</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Cerradas</div>
-    <div class="kpi-value">{{ kpi_ots.cerradas }}</div>
-  </div>
-  <div class="kpi danger">
-    <div class="kpi-label">Prioridad crítica</div>
-    <div class="kpi-value">{{ kpi_ots.criticas }}</div>
-  </div>
-</div>
+</section>
 
-<h3 style="margin-top:1.5rem;">Usuarios del sistema</h3>
-<div class="kpi-grid">
-  <div class="kpi">
-    <div class="kpi-label">Usuarios totales</div>
-    <div class="kpi-value">{{ kpi_users.total }}</div>
+{# KPIs usuarios #}
+<section class="card">
+  <h3>Usuarios del sistema</h3>
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Usuarios totales</div>
+      <div class="kpi-value">{{ kpi_users.total }}</div>
+    </div>
+    <div class="kpi ok">
+      <div class="kpi-label">Activos</div>
+      <div class="kpi-value">{{ kpi_users.activos }}</div>
+    </div>
+    <div class="kpi warn">
+      <div class="kpi-label">Inactivos</div>
+      <div class="kpi-value">{{ kpi_users.inactivos }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Mecánicos</div>
+      <div class="kpi-value">{{ kpi_users.mecanicos }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Supervisores</div>
+      <div class="kpi-value">{{ kpi_users.supervisores }}</div>
+    </div>
   </div>
-  <div class="kpi ok">
-    <div class="kpi-label">Activos</div>
-    <div class="kpi-value">{{ kpi_users.activos }}</div>
-  </div>
-  <div class="kpi warn">
-    <div class="kpi-label">Inactivos</div>
-    <div class="kpi-value">{{ kpi_users.inactivos }}</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Mecánicos</div>
-    <div class="kpi-value">{{ kpi_users.mecanicos }}</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Supervisores</div>
-    <div class="kpi-value">{{ kpi_users.supervisores }}</div>
-  </div>
-</div>
+</section>
 
 <h2 style="margin-top:1.5rem;">Administración de usuarios</h2>
 
-{# ⭐ Botones de acción en fila que se adaptan en móvil #}
+{# Barra de acciones: texto + botones #}
 <div class="admin-actions-bar">
-  <p class="muted">
+  <p class="muted admin-actions-text">
     Desde este panel puedes gestionar las cuentas del sistema y las cargas masivas.
   </p>
   <div class="admin-actions-buttons">
@@ -75,7 +82,8 @@
   </div>
 </div>
 
-<div class="grid-2 admin-grid">
+{# Grid principal: en desktop 2 columnas, en móvil 1 #}
+<div class="admin-grid">
   <section class="card">
     <h3>Gestión de usuarios</h3>
 
@@ -107,16 +115,14 @@
             </td>
             <td>
               <div class="acciones-usuario">
-                <form method="post"
-                      action="{% url 'admin_usuario_toggle_activo' u.id %}">
+                <form method="post" action="{% url 'admin_usuario_toggle_activo' u.id %}">
                   {% csrf_token %}
                   <button class="btn btn-xs" type="submit">
                     {% if u.activo %}Desactivar{% else %}Activar{% endif %}
                   </button>
                 </form>
 
-                <form method="post"
-                      action="{% url 'admin_usuario_reset_password' u.id %}">
+                <form method="post" action="{% url 'admin_usuario_reset_password' u.id %}">
                   {% csrf_token %}
                   <button class="btn btn-xs" type="submit">
                     Resetear clave
@@ -134,12 +140,14 @@
   </section>
 
   <section class="card">
-    <h3>Últimas OTs creadas</h3>
-    <a class="btn btn-xs" href="{% url 'ot_list' %}">
-      📄 Listado OTs
-    </a>
+    <div class="admin-ultimas-ots-header">
+      <h3>Últimas OTs creadas</h3>
+      <a class="btn btn-xs" href="{% url 'ot_list' %}">
+        📄 Listado OTs
+      </a>
+    </div>
 
-    <div class="tabla-wrapper" style="margin-top:.5rem;">
+    <div class="tabla-wrapper">
       <table class="table-compact tabla-responsiva">
         <thead>
           <tr>

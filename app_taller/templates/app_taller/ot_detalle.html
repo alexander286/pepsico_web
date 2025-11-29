@@ -55,6 +55,7 @@
           </div>
         </form>
       </div>
+      {% endif %}
 
       <div class="card">
         <h3>Cambiar estado</h3>
@@ -67,8 +68,7 @@
           </div>
         </form>
       </div>
-      {% endif %}
-
+      
       <div class="card">
         <h3>Prioridad</h3>
         <form method="post" action="{% url 'ot_cambiar_prioridad' numero_ot=ot.numero_ot %}">
@@ -90,7 +90,7 @@
           </div>
         </form>
       </div>
-    </aside>
+    
   </div>
 </div>
 
