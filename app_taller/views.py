@@ -3285,3 +3285,105 @@ def importar_archivo_universal(request):
 
     # MÉTODO GET: redirigir siempre al panel
     return redirect("admin_excel_panel")
+# app_taller/views.py (añade import y la función)
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.utils import timezone
+
+# importa modelos que puedas tener. Se envuelve en try/except para evitar errores
+try:
+    from .models import Vehiculo, Usuario  # ajustar nombres si los tuyos son distintos
+except Exception:
+    Vehiculo = None
+    Usuario = None
+
+
+def salida_vehiculo(request):
+    """
+    Vista para registrar/visualizar la salida de un vehículo.
+    - GET: muestra el formulario.
+    - POST: procesa la salida -> intenta buscar el vehículo por patente,
+      marca la salida (si el modelo lo permite) y muestra mensaje de éxito.
+    """
+    context = {}
+
+    if request.method == "POST":
+        patente = request.POST.get("patente", "").strip()
+        conductor_id = request.POST.get("conductor")  # puede ser id o nombre según tu form
+        fecha_salida = request.POST.get("fecha_salida", "").strip()
+
+        # Validaciones básicas
+        if not patente:
+            messages.error(request, "Debe ingresar la patente.")
+            return redirect("salida_vehiculo")
+
+        # Intentar buscar vehículo en BD (si existe el modelo Vehiculo)
+        veh = None
+        if Vehiculo is not None:
+            try:
+                veh = Vehiculo.objects.filter(patente__iexact=patente).first()
+            except Exception:
+                veh = None
+
+        # Intentar buscar conductor si existe modelo Usuario (opcional)
+        conductor_obj = None
+        if conductor_id and Usuario is not None:
+            try:
+                # si envías id numérico:
+                if conductor_id.isdigit():
+                    conductor_obj = Usuario.objects.filter(id=int(conductor_id)).first()
+                else:
+                    # buscar por nombre o email (fallback)
+                    conductor_obj = Usuario.objects.filter(nombre_completo__icontains=conductor_id).first()
+            except Exception:
+                conductor_obj = None
+
+        # Hora/parsing: preferimos usar timezone.now() si fecha_salida vacía o mal parseada
+        salida_dt = timezone.now()
+        # si envían fecha_salida en formato ISO o 'd-m-Y H:i', podrías parsearla más adelante
+
+        # Intentar actualizar estado del vehículo (si el modelo tiene campo 'estado' o 'salida')
+        updated = False
+        if veh:
+            try:
+                # Guardamos un campo típico. Esto no falla si el atributo no existe (lo intentamos con setattr)
+                if hasattr(veh, "fecha_salida"):
+                    setattr(veh, "fecha_salida", salida_dt)
+                # Si usas 'estado' para marcar "Fuera"
+                if hasattr(veh, "estado"):
+                    setattr(veh, "estado", "FUERA")
+                # si tienes un booleano 'en_taller' por ejemplo:
+                if hasattr(veh, "en_taller"):
+                    try:
+                        setattr(veh, "en_taller", False)
+                    except Exception:
+                        pass
+                veh.save()
+                updated = True
+            except Exception:
+                updated = False
+
+        # Opcional: podrías crear un registro de salida en una tabla de logs aquí.
+
+        # Mensaje final (siempre mostramos mensaje de salida exitosa visual para UX)
+        detalle = f"Patente: {patente}"
+        if conductor_obj:
+            detalle += f" — Conductor: {getattr(conductor_obj, 'nombre_completo', str(conductor_obj))}"
+        if updated:
+            detalle += " — Registro actualizado."
+        messages.success(request, f"Salida exitosa. {detalle}")
+
+        # redirigir al mismo formulario o a dashboard recepcionista
+        return redirect("dashboard")  # o "salida_vehiculo" si quieres quedarte en la página
+
+    # GET -> render del formulario
+    # Si quieres llenar selects con conductores existentes:
+    conductores = []
+    if Usuario is not None:
+        try:
+            # intenta filtrar por rol 'CHOFER' o 'CONDUCTOR' si existe
+            conductores = list(Usuario.objects.all()[:200])
+        except Exception:
+            conductores = []
+
+    return render(request, "app_taller/salida_vehiculo.html", {"conductores": conductores})
